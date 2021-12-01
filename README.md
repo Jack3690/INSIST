@@ -1,4 +1,4 @@
-# Jupyter Notebooks for Data Driven Astronomy
+# Indian Spectroscopic and Imaging Space Telescope 
 
 ## Introduction
 
@@ -27,7 +27,7 @@ This notebook can be used to understand how to generate Point Spread Functions o
 If you have any questions or suggestions for improvements to this repo,
 please contact the owners of the repository.
 
-This is not an official  product.
+This is not an official product.
 
 
 ## References

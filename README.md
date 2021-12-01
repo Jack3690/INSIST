@@ -2,53 +2,23 @@
 
 ## Introduction
 
-With services such as [Google Colab](https://colab.research.google.com/notebooks/intro.ipynb?utm_source=scs-index), [Binder](https://mybinder.org/), and [Gradient](https://gradient.run/notebooks), now Jupyter notebooks can be hosted and shared online. Users can run shared notebooks without having to install required packages locally on their machines. Although these services come with many pre-installed packages, some newer packages require manual installation routines. 
+This is a repository dedicated to Indian Spectroscopic and Imaging Space Telescope (INSIST) project. It contains Jupyter Notebooks which can be hosted on cloud platforms such as [Google Colab](https://colab.research.google.com/notebooks/intro.ipynb?utm_source=scs-index), [Binder](https://mybinder.org/), and [Gradient](https://gradient.run/notebooks)
 
 This repository contains codes for the following:
 
-*  H alpha Map, WHAN Map, BPT Map and Metallcity Map overplotted with SDSS g band contours
-*  Fast.ai CNN Classifier using Galaxy Zoo Kaggle dataset
 *  PSF using catalogs and Casjobs
+*  PSF based on different Telescope apertures and obstructions
 
-# INSIST Tools
+# WebTools
 * PSF Simulation Tool : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/Kugelblitz/main?urlpath=%2Fvoila%2Frender%2FPSF_Simulator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
  
 ## Notebooks
 
-* Marvin : [ScienceExercises.ipynb](https://github.com/Jack3690/Kugelblitz/blob/main/ScienceExercises.ipynb)
-* Fast.ai : [Bar_Classifier.ipynb](https://github.com/Jack3690/Kugelblitz/blob/main/Bar_Classifier.ipynb)
 * PSF Simulator : [PSF_Simulator.ipynb](https://github.com/Jack3690/Kugelblitz/blob/main/PSF_Simulator.ipynb)
 
 
 
 ## Usage
-### [ScienceExercises.ipynb](https://github.com/Jack3690/Kugelblitz/blob/main/ScienceExercises.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/Kugelblitz/blob/main/ScienceExercises.ipynb)
-This notebook can be used to generate Marvin maps with optical contour overplots using Plateifu of MaNGA sources. An example of maps is given below 
-
-![plot](./data/maps.png) 
-
-### [Bar_Classifier.ipynb](https://github.com/Jack3690/Kugelblitz/blob/main/Bar_Classifier.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/Kugelblitz/blob/main/Bar_Classifier.ipynb)
-This notebook contains code for creating a Convolution Neural Network based image classifier for classifying galaxies into Barred or Unbarred using [fast.ai](https://www.fast.ai/). The notebook uses Kaggle Galaxy Zoo dataset for training.
-
-#### Barred 
-![plot](./data/barred.png) 
-
-#### Unbarred 
-![plot](./data/unbarred.png) 
-
-The example uses the CNN model with **ResNet50** architecture with pre-trained weights. Following data augmentation methods are used:
-
-* Rotation : 0 to 360
-* Flip : Horizontal and vertical
-* Contrast : 0.75 to 1.35
-* Zoom : 0.8 to 1.2
-
-#### Data Augmentation*
-![plot](./data/augmentation.png) 
-#### Training
-![plot](./data/training.png)
-#### Confusion Matrix
-![plot](./data/CM.png)
 
 ### [PSF_Simulator.ipynb](https://github.com/Jack3690/Kugelblitz/blob/main/PSF_Simulator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/Kugelblitz/blob/main/PSF_Simulator.ipynb)
 This notebook can be used to understand how to generate Point Spread Functions of sources in a given field using user defined catalogs and CasJobs. A Voila based web tool is also created using same routine which can be accessed here [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/Kugelblitz/main?urlpath=%2Fvoila%2Frender%2FPSF_Simulator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
@@ -58,10 +28,7 @@ This notebook can be used to understand how to generate Point Spread Functions o
 If you have any questions or suggestions for improvements to this repo,
 please contact the owners of the repository.
 
-This is not an official Google product.
+This is not an official  product.
 
 
 ## References
-* [SDSS-Marvin](https://sdss-marvin.readthedocs.io/en/latest/index.html)
-* [MaNGA](https://www.sdss.org/surveys/manga/)
-* [fast.ai](http://fast.ai/)

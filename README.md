@@ -15,6 +15,7 @@ This repository contains codes for the following:
 ## Notebooks
 
 * PSF Simulator : [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/PSF_Simulator.ipynb)
+* UV Stellar Catalog Generator : [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/UV_Stellar_Catalog.ipynb.ipynb)
 
 
 ## Usage

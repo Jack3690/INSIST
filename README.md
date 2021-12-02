@@ -23,6 +23,8 @@ This repository contains codes for the following:
 ### [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/PSF_Simulator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/PSF_Simulator.ipynb)
 This notebook can be used to understand how to generate Point Spread Functions of sources in a given field using user defined catalogs and CasJobs.
 
+### [UV_Stellar_Catalogipynb](https://github.com/Jack3690/INSIST/blob/main/UV_Stellar_Catalog.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/UV_Stellar_Catalog.ipynb)
+
 ## Conclusion/Disclaimer
 
 If you have any questions or suggestions for improvements to this repo,

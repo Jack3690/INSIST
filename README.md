@@ -30,6 +30,8 @@ This notebook can be used to understand how to generate Point Spread Functions o
 In this section we use Astropy to generate Gaussian and Airy disk PSFs based on FWHM and pixel scale, normalized based on ABmag
 ##PSF Generator using Source Catalog
 
+![plot](./doc/SPG.png) 
+
 #### PSF using source Catalog and CasJobs
 
 In this section we explore how to use a catalog which is either directly acquired or acquired from MAST Casjobs to generate PSF distribuition of a field.

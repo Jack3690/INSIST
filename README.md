@@ -36,6 +36,9 @@ In this section we use Astropy to generate Gaussian and Airy disk PSFs based on 
 
 In this section we explore how to use a catalog which is either directly acquired or acquired from MAST Casjobs to generate PSF distribuition of a field.
 
+## [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/PSF_Analysis.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/PSF_PSF_Analysis.ipynb)
+
+In this section we compare off axis and on axis PSFs generated using Zeemax. The aim is to quantitatively study how presence of on axis secondary modifies the PSF and how it would affect the expected science cases.
 
 ## [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/UV_Stellar_Catalog.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/UV_Stellar_Catalog.ipynb)
 

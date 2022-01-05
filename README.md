@@ -12,14 +12,17 @@ This repository contains codes for the following:
 
 * PSF analysis routines employed on Zeemax simulations
 * UV stellar catalog generator using SED fitting
+* Exposure Time Calculator for different telescopes
 
 # Web Tools
 * PSF Simulation Tool : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FPSF_Simulator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
  
 ## Notebooks
 
-* PSF Simulator : [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/PSF_Simulator.ipynb)
+* PSF Simulator                : [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/PSF_Simulator.ipynb)
+* PSF Analysis                 : [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/PSF_Analysis.ipynb)
 * UV Stellar Catalog Generator : [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/UV_Stellar_Catalog.ipynb)
+* Exposure Time Calculator     : [Exposure_Time_Calculator.ipynb](https://github.com/Jack3690/INSIST/blob/main/Exposure_Time_Calculator)
 
 
 # Usage
@@ -55,6 +58,9 @@ This notebook contains routines which allows users to predict UV fluxes of sourc
 #### SED Fitting routine
 
 
+## [Exposure_Time_Calculatoripynb](https://github.com/Jack3690/INSIST/blob/main/Exposure_Time_Calculator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/Exposure_Time_Calculator)
+
+This notebook contains routines which allows users to calculate exposure time for a range of telescope surveys such as GALEX, UVIT, LSST etc with magnitude and SNR as inputs.
 # Conclusion/Disclaimer
 
 If you have any questions or suggestions for improvements to this repo,

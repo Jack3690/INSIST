@@ -39,6 +39,7 @@ In this section we use Astropy to generate Gaussian and Airy disk PSFs based on 
 
 ![plot](./doc/SPG.png) 
 
+
 ### PSF using source Catalog and CasJobs
 
 In this section we explore how to use a catalog which is either directly acquired or acquired from MAST Casjobs to generate PSF distribuition of a field.

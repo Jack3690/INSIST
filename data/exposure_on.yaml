@@ -1,0 +1,59 @@
+ccd_detector:
+  characteristics:
+    adc_bit_resolution: 16
+    adc_voltage_range: [0.0, 10.0]
+    charge_to_volt_conversion: 3.0e-06
+    full_well_capacity: 100000
+    pre_amplification: 100
+    quantum_efficiency: 0.5
+  environment: {temperature: 300}
+  geometry: {col: 836, pixel_horz_size: 10.0, pixel_vert_size: 10.0, row: 836, total_thickness: 1}
+exposure:
+  outputs: {output_folder: output, save_data_to_file: null}
+pipeline:
+  charge_collection:
+  - {enabled: true, func: pyxel.models.charge_collection.simple_collection, name: simple_collection}
+  - {enabled: true, func: pyxel.models.charge_collection.simple_full_well, name: full_well}
+  charge_generation:
+  - {enabled: true, func: pyxel.models.charge_generation.simple_conversion, name: photoelectrons}
+  - arguments: {incident_angles: null, initial_energy: 100.0, particle_type: proton,
+      particles_per_second: 100, running_mode: stepsize, seed: 4321, simulation_mode: cosmic_ray,
+      spectrum_file: data/proton_L2_solarMax_11mm_Shielding.txt, starting_position: null}
+    enabled: true
+    func: pyxel.models.charge_generation.cosmix
+    name: cosmix
+  charge_measurement:
+  - {enabled: true, func: pyxel.models.charge_measurement.simple_measurement, name: simple_measurement}
+  charge_transfer:
+  - arguments:
+      beta: 0.3
+      charge_injection: false
+      direction: parallel
+      max_electron_volume: 1.62e-10
+      sigma: [1.0e-10]
+      transfer_period: 0.00094722
+      trap_densities: [20.0]
+      trap_release_times: [0.03]
+    enabled: false
+    func: pyxel.models.charge_transfer.cdm
+    name: cdm
+  optics:
+  - arguments:
+      fov_arcsec: 20.5
+      optical_system:
+      - {item: CircularAperture, radius: 1}
+      - {item: SecondaryObscuration, n_supports: 4, secondary_radius: 0.36, support_width: 0.025}
+      pixelscale: 0.1
+      wavelength: 2.25e-07
+    enabled: true
+    func: pyxel.models.optics.optical_psf
+    name: optical_psf
+  photon_generation:
+  - arguments: {align: center, bit_resolution: 32, convert_to_photons: true, image_file: data/source_n.fits}
+    enabled: true
+    func: pyxel.models.photon_generation.load_image
+    name: load_image
+  - {enabled: false, func: pyxel.models.photon_generation.shot_noise, name: shot_noise}
+  readout_electronics:
+  - {enabled: true, func: pyxel.models.readout_electronics.simple_amplifier, name: simple_amplifier}
+  - {enabled: true, func: pyxel.models.readout_electronics.simple_adc, name: simple_adc}

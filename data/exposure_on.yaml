@@ -1,4 +1,4 @@
-ccd_detector:
+cmos_detector:
   characteristics:
     adc_bit_resolution: 16
     adc_voltage_range: [0.0, 10.0]
@@ -15,6 +15,10 @@ pipeline:
   - {enabled: true, func: pyxel.models.charge_collection.simple_collection, name: simple_collection}
   - {enabled: true, func: pyxel.models.charge_collection.simple_full_well, name: full_well}
   charge_generation:
+  - arguments: { dark_rate: 1} #electron/second/pixel
+    enabled: true
+    func: pyxel.models.charge_generation.dark_current 
+    name: dark_current
   - {enabled: true, func: pyxel.models.charge_generation.simple_conversion, name: photoelectrons}
   - arguments: {incident_angles: null, initial_energy: 100.0, particle_type: proton,
       particles_per_second: 100, running_mode: stepsize, seed: 4321, simulation_mode: cosmic_ray,

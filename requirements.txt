@@ -6,3 +6,4 @@ pandas
 seaborn
 astropy
 scipy
+photutils

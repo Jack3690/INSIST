@@ -80,7 +80,7 @@ def bandpass(wav, flux , inputs, plot = True):
     ax.set_xlabel(r'$\AA$')
     ax.set_ylabel(r'Normalized Flux')
     
-  return data, params
+  return fig, ax, data, params
 
 def generate_psf(npix,sigma, function = 'Gaussian'):
     x       = np.linspace(0,1000,npix)

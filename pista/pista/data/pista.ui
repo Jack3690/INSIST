@@ -979,7 +979,7 @@
      <string>Gain</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="G1">
+   <widget class="QLineEdit" name="gain">
     <property name="geometry">
      <rect>
       <x>650</x>
@@ -1113,6 +1113,12 @@
     <property name="text">
      <string>Dark Current</string>
     </property>
+    <property name="autoRepeat">
+     <bool>false</bool>
+    </property>
+    <property name="tristate">
+     <bool>true</bool>
+    </property>
    </widget>
    <widget class="QLabel" name="label_26">
     <property name="geometry">
@@ -1180,6 +1186,12 @@
     </property>
     <property name="text">
      <string>DNFP</string>
+    </property>
+    <property name="autoRepeat">
+     <bool>false</bool>
+    </property>
+    <property name="tristate">
+     <bool>true</bool>
     </property>
    </widget>
    <widget class="QLineEdit" name="DN">

@@ -12,7 +12,7 @@ setup(
     install_requires =['pandas','matplotlib','astropy','photutils',
                        'numpy', 'seaborn','scipy' ],
     include_package_data = True,  
-    package_data         = {"pista" : ["data/*"]},
+    package_data         = {"PSF_Sim" : ["data/*"]},
     classifiers=[
         'Development Status :: 1 - Planning',
         'Intended Audience :: Science/Research',
@@ -23,6 +23,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+	  'Programming Language :: Python :: 3.9',
     ],
    
 )

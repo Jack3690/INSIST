@@ -1,1 +1,1 @@
-recursive-include PSF_Sim/data *
+recursive-include pista/data *

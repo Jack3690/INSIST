@@ -67,7 +67,8 @@ class Imager():
                    'DFM'        :  1.424e-2,   # 14.24pA
                    'pixel_area' :  1e-6,       # 
                    'DN'         :  0.1/100,
-                   'NF'         :  0       # electrons 
+                   'NF'         :  0,     # electrons 
+                   'FWC'        : 1.4e5
                    }
 
     if band not in ['G','UV','U']:
@@ -83,9 +84,8 @@ class Imager():
     else:
       self.response_funcs      = response_funcs
 
-    self.full_well_capacity = 1.4e5           # electrons
     self.gain        = self.params['G1']*pow(2,
-                            self.params['bit_res'])/self.full_well_capacity
+                            self.params['bit_res'])/self.params['FWC']
     self.exp_time    = exp_time  # seconds
     self.df          = df
 
@@ -99,7 +99,10 @@ class Imager():
 
     wav = np.linspace(1000,9000,10000)
     flux = (c*1e2*3.631e-20)/(wav**2*1e-8) 
-    data, params = bandpass(wav,flux,self.response_funcs)
+    fig, ax, data, params = bandpass(wav,flux,self.response_funcs)
+    
+    self.zp_fig = fig
+    self.zp_ax  = ax
 
     lambda_phot, int_flux, W_eff = params
 
@@ -118,7 +121,11 @@ class Imager():
     wav  = filt_dat[:,0]
     flux = filt_dat[:,1]
 
-    data, params = bandpass(wav,flux,self.response_funcs)
+    fig, ax, data, params = bandpass(wav,flux,self.response_funcs)
+    
+    self.sky_fig = fig
+    self.sky_ax  = ax
+    
     lambda_eff, int_flux, W_eff = params
     self.params['M_sky'] = int_flux
     self.M_sky_p         = self.params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)

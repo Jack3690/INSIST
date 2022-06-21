@@ -31,7 +31,7 @@ def bandpass(wav, flux , inputs, plot = True):
     file_name = i.split(',')[0]
     n         = float(i.split(',')[1])
     
-    filt_dat  = np.loadtxt(f'{data_path}/data/{file_name}')
+    filt_dat  = np.loadtxt(f'{file_name}')
     wav  = filt_dat[:,0]
     flux = filt_dat[:,1:]
     
@@ -56,7 +56,7 @@ def bandpass(wav, flux , inputs, plot = True):
     R_eff      *= flux_out**n
     
     if plot:
-      ax.plot(lambda_ ,flux_out/flux_out.max(),label=f'{file_name[:-4]}', alpha = 0.7)
+      ax.plot(lambda_ ,flux_out/flux_out.max(),label=f"{file_name.split('/')[-1][:-4]}x{n}", alpha = 0.7)
 
   conv_flux = R_eff*flux_AB
  

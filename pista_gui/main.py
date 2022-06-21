@@ -22,7 +22,7 @@ class Ui(QtWidgets.QMainWindow):
         self.df             = None
         self.psf_file       = None
         self.response_funcs = []
-        
+        self.count_sims = 1
         
         super(Ui, self).__init__() # Call the inherited classes __init__ method
         uic.loadUi(f'{data_path}/data/pista.ui', self) # Load the .ui file
@@ -45,7 +45,7 @@ class Ui(QtWidgets.QMainWindow):
         filters = "CSV (*.csv);;DAT (*.dat)"
         source_file = QFileDialog.getOpenFileName(filter = filters)[0]
         self.source.setText(source_file.split('/')[-1])
-        if len(self.source.text())>1:
+        if len(self.source.text())>=1:
             self.df = pd.read_csv(source_file)
         
         
@@ -74,6 +74,7 @@ class Ui(QtWidgets.QMainWindow):
                 self.response_funcs.append(f'{filt},{1}')
     
     def setdefault(self):
+        self.response_funcs = []
         self.abmag.setText('20')
         self.n_pix.setText("1000")
         psf_file = f'{data_path}/data/off_axis_hcipy.npy'
@@ -83,7 +84,7 @@ class Ui(QtWidgets.QMainWindow):
         if self.df is None:
             ra = [0]
             dec= [0]
-            mag_nuv = [9]
+            mag_nuv = [10]
             self.df = pd.DataFrame(zip(ra,dec,mag_nuv), columns = ['ra','dec','mag'])
            
         sim = Analyzer(df = self.df, exp_time = 60)
@@ -114,7 +115,7 @@ class Ui(QtWidgets.QMainWindow):
         
         coating = f'{data_path}/data/UV/Coating.dat'
         self.coating_filename.setText(coating.split('/')[-1])
-        self.response_funcs.append(coating)
+        self.response_funcs.append(f'{coating},5')
         self.mirrors.setValue(5)
         filters = [f'{data_path}/data/UV/Filter.dat', 
                    f'{data_path}/data/UV/Dichroic.dat',
@@ -130,17 +131,22 @@ class Ui(QtWidgets.QMainWindow):
         
         if len(self.source.text())<1:
             self.check_abmag.setChecked(True)  
-        if self.df is None:
+            
+        if self.check_abmag.isChecked():
+            abmag = self.abmag.text()
+            if len(abmag)>=1 and self.check_input(abmag):
+                abmag = float(abmag)
+            else : 
+                abmag = 10
+                self.abmag.setText('10')
             ra = [0]
             dec= [0]
-            mag_nuv = [10]
-            self.df = pd.DataFrame(zip(ra,dec,mag_nuv), 
+            mag = [abmag]
+            self.df = pd.DataFrame(zip(ra,dec,mag), 
                                    columns = ['ra','dec','mag'])
-            self.abmag.setText('10')
-            self.check_abmag.setChecked(True)
             
         exp_time = self.exp_time.text()
-        if len(exp_time)>1 and self.check_input(exp_time):
+        if len(exp_time)>=1 and self.check_input(exp_time):
             self.exp_time_value = float(exp_time)
         else :
             self.exp_time.setText('60')
@@ -148,7 +154,7 @@ class Ui(QtWidgets.QMainWindow):
              
         if self.psf_file is None:
             fwhm = self.fwhm.text()
-            if len(fwhm)>1:
+            if len(fwhm)>=1:
                 if self.check_input(fwhm):
                     fwhm   = float(fwhm)
                 else:
@@ -376,10 +382,58 @@ class Ui(QtWidgets.QMainWindow):
     def simulate_btn(self):
         self.params = {}
         self.check_params()
-        sim = Analyzer(df = self.df, psf_file = self.psf_file
+        sim = Analyzer(df = self.df, cols = {'mag_nuv' :'mag'}, psf_file = self.psf_file
                        , exp_time = self.exp_time_value,n_pix= self.n_pix_value,
                        response_funcs = self.response_funcs)
+        sim(params = self.params)
         self.sim = sim
+        
+        try:
+            fig_img, ax_img = self.sim.show_image(self.output_select.currentText())
+        except:
+            #self.display_out.setText(f"Error: {self.image_select.currentText()} data not generated")
+            self.image_select.setCurrentText('Readout')
+            fig_img, ax_img = self.psf.show_image(self.image_select.currentText())
+    
+        if self.count_sims>=1:
+            self.image_box.removeWidget(self.canvas_img)
+            self.canvas_img.deleteLater()      
+            self.figure_img = fig_img
+            self.canvas_img = FigureCanvas(self.figure_img)
+            self.image_box.addWidget(self.canvas_img)
+            self.output_select.raise_()
+        else :
+            self.figure_img = fig_img
+            self.canvas_img = FigureCanvas(self.figure_img)
+            self.image_box  = QtWidgets.QHBoxLayout(self.output_image)
+            self.image_box.setObjectName('image_box')
+            self.image_box.addWidget(self.canvas_img)
+            self.output_select.raise_()
+            
+    def plot_image(self,fig,ax,out_var):
+    # Image
+       try:
+           fig_img, ax_img = self.sim.show_image(self.output_select.currentText())
+       except:
+           #self.display_out.setText(f"Error: {self.image_select.currentText()} data not generated")
+           self.image_select.setCurrentText('Readout')
+           fig_img, ax_img = self.psf.show_image(self.image_select.currentText())
+
+       if self.count_sims>=1:
+           self.image_box.removeWidget(self.canvas_img)
+           self.canvas_img.deleteLater()      
+           self.figure_img = fig_img
+           self.canvas_img = FigureCanvas(self.figure_img)
+           self.image_box.addWidget(self.canvas_img)
+           self.image_select.raise_()
+       else :
+           self.figure_img = fig_img
+           self.canvas_img = FigureCanvas(self.figure_img)
+           self.image_box  = QtWidgets.QHBoxLayout(self.output_image)
+           self.image_box.setObjectName('image_box')
+           self.image_box.addWidget(self.canvas_img)
+           self.image_select.raise_()
+                
   
 
 if __name__ == "__main__":

@@ -689,7 +689,7 @@
      <number>10</number>
     </property>
     <property name="singleStep">
-     <number>0</number>
+     <number>1</number>
     </property>
    </widget>
    <widget class="QLineEdit" name="filter_filenames">

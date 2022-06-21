@@ -81,6 +81,7 @@ class Imager():
         self.response_funcs      = [ 'U/M1.dat,5','U/Dichroic.dat,2','U/Filter.dat,1']
       elif band == 'UV':
         self.response_funcs      = [ 'UV/Coating.dat,6','UV/Dichroic.dat,2','UV/Filter.dat,1']
+      self.response_funcs = [ f'{data_path}/data/' + i for i in self.response_funcs]
     else:
       self.response_funcs      = response_funcs
 
@@ -255,7 +256,7 @@ class Imager():
       self.DC_array*=(1 + self.DNFP_array)
 
     if self.QN:
-      self.QN_value = (self.full_well_capacity/(pow(2,self.params['bit_res'])
+      self.QN_value = (self.params['FWC']/(pow(2,self.params['bit_res'])
                                             *np.sqrt(12)))
 
       self.QN_array = self.QN_value*np.random.randint(-1,2,size = (n_pix,n_pix))
@@ -391,7 +392,8 @@ class Imager():
     """
     if params is not None:
       self.params.update(params)
-      self.gain        = pow(2,self.params['bit_res'])/self.full_well_capacity
+      self.gain        = self.params['G1']*pow(2,
+                            self.params['bit_res'])/self.params['FWC']
       self.M_sky_p     = self.params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
       self.init_psf_patch() 
 

@@ -1,6 +1,7 @@
 from photutils import aperture as aper
 from photutils.aperture import aperture_photometry
 from matplotlib import colors as col
+import matplotlib.pyplot as plt
 from .simulation import *
 
 data_path = Path(__file__).parent.joinpath()
@@ -72,18 +73,27 @@ class Analyzer(Imager):
       phot_table['flux_err'] = np.sqrt( phot_table['flux'].value  + phot_table['sky_flux'].value )
   
       phot_table['SNR']      = phot_table['flux'].value/ phot_table['flux_err'].value
-      phot_table['mag_in']   = self.df['mag_nuv'].values
+      phot_table['mag_in']   = self.df['mag'].values
       
       zero_p_flux = 0
-      for i in range(3):
-        zero_p_flux += phot_table['flux'].value[i]/pow(10,-0.4*phot_table['mag_in'].value[i])
-      zero_p_flux/=3
+      if len(phot_table)>3:
+          for i in range(3):
+            zero_p_flux += phot_table['flux'].value[i]/pow(10,-0.4*phot_table['mag_in'].value[i])
+          zero_p_flux/=3
+      elif len(phot_table)==1:
+          zero_p_flux = phot_table['flux'].value[0]/pow(10,-0.4*phot_table['mag_in'].value[0])
+      else:
+          zero_p_flux = phot_table['flux'].value[0]
+          
+          
 
       self.header['EXPTIME'] = self.exp_time
       self.header['ZPT']     = zero_p_flux
       self.header['BUNIT']   = 'DN'
       phot_table['mag_out']  = -2.5*np.log10(phot_table['flux']/zero_p_flux)
       phot_table['mag_err']  =1.087/phot_table['SNR']
+      
+      print("Simulation and Photometry Completed")
 
       self.phot_table = phot_table
 

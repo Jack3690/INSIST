@@ -15,12 +15,11 @@ A python package aimed at simulating astronomical images. The routine simulates 
 Clone the repository.
 Open terminal and go to directory pista
 ```
-function test() {
-  console.log("notice the blank line before this function?");
-}
+pip install . 
 ```
-The package includes a GUI designed using PyQT5.
+The package includes a GUI designed using PyQT5. 
 ![plot](./doc/PISTA.png) 
+
 
 # Web Tools
 * PSF Simulation Tool           : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FPSF_Simulator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
@@ -84,5 +83,6 @@ please contact the owners of the repository.
 
 This is not an official product.
 
-
 ## References
+* https://docs.hcipy.org/stable/
+* https://esa.gitlab.io/pyxel/

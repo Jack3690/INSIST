@@ -8,11 +8,13 @@ This is a repository dedicated to data simulations for the Indian Spectroscopic 
 
 This repository contains codes for the following:
 
-*  PSFs simulation using CasJobs and HCIPy python packages, which can simulate any field in the GALEX catalog for a range of telescope apertures, wavelengths and obstruction designs
-
+*  Image simulation using CasJobs and HCIPy python package: A python routine which can simulate any field in the GALEX catalog for a range of telescope apertures, wavelengths and obstruction designs
 * PSF analysis routines employed on Zeemax simulations
 * UV stellar catalog generator using SED fitting
 * Exposure Time Calculator for different telescopes
+# Packages
+* PISTA : Python Image Simulation and Testing Application: A pip installable python package aimed at simulating astronomical images. The routine simulates individual stars and adds different noises. The input parameter space is designed to inculcate observational parameters, telescope parameters and detector characteristics.
+* The package includes a GUI designed using PyQT5.
 
 # Web Tools
 * PSF Simulation Tool           : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FPSF_Simulator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
@@ -48,12 +50,10 @@ This notebook contains Python routines used for comparing off axis and on axis P
 
 ## [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/UV_Stellar_Catalog.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/UV_Stellar_Catalog.ipynb)
 
-This notebook contains routines which allows users to predict UV fluxes of sources using their PanSTARRS optical band magntidues. The objective is to able to generate a catalog of sources in UV band using optical band magnitudes as input. We explore several methods to achieve this.
+This notebook contains routines which allows users to predict UV fluxes of sources using their PanSTARRS optical band magntidues through SED Fitting. The objective is to able to generate a catalog of sources in UV band using optical band magnitudes as input. For SED fitting we utilize Kurucz models http://kurucz.harvard.edu/grids.html
 
-### SED Fitting
-
-#### SED Fitter
-
+### Convolving Filters with Stellar models
+![plot](./doc/filter_conv.png) 
 #### SED Fitting routine
 
 

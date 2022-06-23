@@ -6,22 +6,26 @@ Repo status : Work in Progress
 
 This is a repository dedicated to data simulations for the Indian Spectroscopic and Imaging Space Telescope (INSIST) project. It contains Jupyter Notebooks which can be hosted on cloud platforms such as [Google Colab](https://colab.research.google.com/notebooks/intro.ipynb?utm_source=scs-index), [Binder](https://mybinder.org/), and [Gradient](https://gradient.run/notebooks), and webtools which can be accessed using [Binder](https://mybinder.org/).
 
-This repository contains codes for the following:
+# Packages
+## PISTA : Python Image Simulation and Testing Application
+A python package aimed at simulating astronomical images. The routine simulates individual stars and adds different noises. The input parameter space is designed to inculcate observational parameters, telescope parameters and detector characteristics.
+![plot](./doc/pista_flow.png) 
 
-*  Image simulation using CasJobs and HCIPy python package: A python routine which can simulate any field in the GALEX catalog for a range of telescope apertures, wavelengths and obstruction designs
-* PSF analysis routines employed on Zeemax simulations
-* UV stellar catalog generator using SED fitting
-* Exposure Time Calculator for different telescopes 
+### Installation
+Clone the repository.
+Open terminal and go to directory pista
+```
+function test() {
+  console.log("notice the blank line before this function?");
+}
+```
+The package includes a GUI designed using PyQT5.
+![plot](./doc/PISTA.png) 
 
 # Web Tools
 * PSF Simulation Tool           : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FPSF_Simulator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
 * Exposure Time Calculator Tool : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FExposure_Time_Calculator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
 
-# Packages
-## PISTA : Python Image Simulation and Testing Application
-A python package aimed at simulating astronomical images. The routine simulates individual stars and adds different noises. The input parameter space is designed to inculcate observational parameters, telescope parameters and detector characteristics.
-![plot](./doc/pista_flow.png) 
-The package includes a GUI designed using PyQT5.
  
 ## Notebooks
 

@@ -49,7 +49,6 @@ class Ui(QtWidgets.QMainWindow):
     def __init__(self):
         self.df             = None
         self.psf_file       = None
-        self.sim            = None
         self.count_sims = 1
         self.response_funcs = []
         
@@ -63,9 +62,6 @@ class Ui(QtWidgets.QMainWindow):
         self.simulate.clicked.connect(self.simulate_btn)
         self.upload_QE_wav.clicked.connect(self.upload_QE_wav_btn)
         self.generate.clicked.connect(self.generate_1d)
-        self.download_image.clicked.connect(self.download_img)
-    
- 
         
     def on_position_changed(self, p):
         x = (p.x()-158)/(371-158)
@@ -300,9 +296,8 @@ class Ui(QtWidgets.QMainWindow):
             self.exp_time_value = 60
             self.error_box.setText("Error: Exposure should be a positive real number."
                                     + " Default Exposure time set")
-         
-        psf_filename = self.psf_filename.text()
-        if self.psf_file is None or len(psf_filename)<1 :
+             
+        if self.psf_file is None:
             fwhm = self.fwhm.text()
             if len(fwhm)>=1:
                 if self.check_input(fwhm):
@@ -925,7 +920,7 @@ class Ui(QtWidgets.QMainWindow):
                  self.ax_1d.set_ylabel('Flux')
                  data = data[x,:]
                  
-            self.ax_1d.plot(data)
+            self.ax_1d.plot(data,'.-')
             if self.scale.currentText()=='Log':
                 self.ax_1d.set_yscale('log')
                 
@@ -933,11 +928,7 @@ class Ui(QtWidgets.QMainWindow):
             self.canvas_1d.draw_idle()
         else:
             self.error_box.setText("Error: Image not generated. Click Simulate First!")
-         
-    def download_img(self):
-        source = self.output_select.currentText()
-        if self.sim is not None:
-            self.sim.writeto(name = f'{source}.fits',source = source)             
+                    
             
 if __name__ == "__main__":
     import sys

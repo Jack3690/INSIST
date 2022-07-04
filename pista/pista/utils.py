@@ -9,6 +9,7 @@ from scipy.interpolate import interp1d
 from scipy.integrate import trapz
 from pathlib import Path
 from astropy.modeling import models
+from scipy.constants import c
 
 sb.set_style('darkgrid')
 matplotlib.rcParams['font.size']=12
@@ -16,13 +17,14 @@ matplotlib.rcParams['figure.figsize']=(10,10)
 
 data_path = Path(__file__).parent.joinpath()
 
-def bandpass(wav, flux , inputs, plot = True):
+def bandpass(wav, flux , inputs, plot = True, fig = None, ax = None):
   # AB system
   lambda_   =  wav 
   flux_AB   = flux 
 
   if plot:
-    fig, ax = plt.subplots(1,1, figsize = (15,8))
+    if fig is None or ax is None:
+        fig, ax = plt.subplots(1,1, figsize = (12,8))
     ax.plot(lambda_ ,flux_AB/flux_AB.max(),label = r'$F(\lambda)$', alpha = 0.7 )
 
   R_eff = 1
@@ -70,13 +72,12 @@ def bandpass(wav, flux , inputs, plot = True):
   params     =  lambda_phot, int_flux, W_eff
 
   if plot:
-    ax.plot(lambda_,conv_flux/conv_flux.max(),label = 'Convloved Flux' ,linewidth=5)
+    ax.plot(lambda_,conv_flux/conv_flux.max(),label = 'Convloved Flux')
     y = np.linspace(0,1)
     x = y*0 + lambda_phot
-    ax.plot(x,y,'--', color = 'black')
-    ax.annotate(r'$\lambda_{phot} = $' + f'{round(lambda_phot,3)}' + r' $\AA$',
-                (lambda_phot+50,0.01), rotation = 90)
-    plt.legend()
+    label = r'$\lambda_{phot} = $' + f'{round(lambda_phot,3)}' + r' $\AA$'
+    ax.plot(x,y,'--', color = 'black',label = label )
+   
     ax.set_xlabel(r'$\AA$')
     ax.set_ylabel(r'Normalized Flux')
     

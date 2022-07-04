@@ -2,6 +2,7 @@ from photutils import aperture as aper
 from photutils.aperture import aperture_photometry
 from matplotlib import colors as col
 import matplotlib.pyplot as plt
+from astropy.io import fits
 from .simulation import *
 
 data_path = Path(__file__).parent.joinpath()
@@ -9,10 +10,13 @@ data_path = Path(__file__).parent.joinpath()
 class Analyzer(Imager):
   def __init__(self, df = None, cols = None,
                psf_file = f'{data_path}/data/off_axis_hcipy.npy',
-               exp_time = 100,n_pix = 2000, response_funcs = None,band = 'G'):
+               exp_time = 100,n_pix = 2000, response_funcs = None
+               ,band = 'G'):
+      
       super().__init__(df=df, cols=cols, exp_time = exp_time,
                        psf_file = psf_file, n_pix = n_pix, 
-                       response_funcs = response_funcs, band = band )
+                       response_funcs = response_funcs
+                       , band = band)
       """
       
       A class to visualize and analyze the simulated image
@@ -110,13 +114,16 @@ class Analyzer(Imager):
 
     fig, ax = plt.subplots(1,1,figsize=figsize)
     ax.scatter(self.df['ra'],self.df['dec'],marker='.',color='black')
-    ax.set_title(f" Requested Center : {self.name} \n FoV : {np.round(self.pixel_scale*(self.n_pix_main-2*self.n_pix_sub )/3600,3)} degrees | {len(self.df)} sources")
+    ax.set_title(f"""Requested Center : {self.name} \n FoV :
+                 {np.round(self.pixel_scale*(self.n_pix_main-2*self.n_pix_sub )
+                           /3600,3)} degrees | {len(self.df)} sources""")
     ax.invert_xaxis()
     ax.set_xlabel('RA (Degrees)')
     ax.set_ylabel('Dec (Degrees)')
     return fig,ax
 
-  def show_image(self, source = 'Digital', figsize = (15,10), download = False):
+  def show_image(self, source = 'Digital', fig = None, ax = None,cmap = 'jet', 
+                 figsize = (15,10), download = False, show_wcs = True):
     """
     Function for plotting the simulated field with PSFs
 
@@ -124,8 +131,8 @@ class Analyzer(Imager):
     -------
     fig, ax
     """
-
-    fig = plt.figure(figsize = figsize)
+    if fig is None or ax is None:
+        fig = plt.figure(figsize = figsize)
     norm = None
     
     if source == 'Digital':
@@ -150,19 +157,25 @@ class Analyzer(Imager):
     elif source == 'QN':
       data = self.QN_array
 
-    ax = fig.add_subplot(projection=self.wcs)
+    if show_wcs:
+        ax = fig.add_subplot(projection=self.wcs)
+    else:
+        ax = fig.add_subplot()
     ax.patch.set_edgecolor('black')  
     ax.patch.set_linewidth('3') 
-    img = ax.imshow(data,cmap='jet' , norm = norm)
-    plt.colorbar(img)
+    img = ax.imshow(data,cmap=cmap , norm = norm)
+    plt.colorbar(img,ax = ax)
     ax.set_title(f'{source} \nRequested center : {self.name}')
     ax.grid(False)
     if download:
         fig.savefig(f"{source}.png", format = 'png')
     return fig,ax
 
-  def show_hist(self, source = 'Digital',bins = None,figsize=(15,8)):
-    fig, ax = plt.subplots(1,1,figsize=figsize)
+  def show_hist(self, source = 'Digital',bins = None,
+                 fig = None, ax = None,figsize=(15,8)):
+     
+    if fig is None or ax is None: 
+        fig, ax = plt.subplots(1,1,figsize=figsize)
 
     if source == 'Digital':
       data  = self.digital.ravel()
@@ -191,6 +204,29 @@ class Analyzer(Imager):
     ax.set_ylabel('Count')
     ax.set_yscale('log')
     return fig, ax
+
+  def getImage(self,source = 'Digital'):
+    if source == 'Digital':
+        data  = self.digital
+    elif source =='Charge':
+        data  = self.charge
+    elif source == 'Sky':
+        data = self.sky_photoelec
+    elif source == 'DC':
+        data = self.DC_array
+    elif source == 'QE':
+        data = self.qe_array
+    elif source =='Bias':
+        data = (self.bias_array + self.DC_array)
+    elif source == 'PRNU':
+        data = self.PRNU_array
+    elif source == 'DNFP':
+        data = self.DNFP_array
+    elif source == 'QN':
+        data = self.QN_array
+    else:
+        data = 0
+    return data
 
   def writeto(self,name,source = 'Digital', user_source = None):
     """

@@ -10,7 +10,7 @@ setup(
     license       = 'BSD 2-clause',   
     packages      = find_packages(),          
     install_requires =['pandas','matplotlib','astropy','photutils',
-                       'numpy', 'seaborn','scipy' ],
+                       'numpy', 'seaborn','scipy','pyqt5' ],
     include_package_data = True,  
     package_data         = {"PSF_Sim" : ["data/*"]},
     classifiers=[

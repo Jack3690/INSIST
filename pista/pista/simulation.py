@@ -68,7 +68,8 @@ class Imager():
                    'pixel_area' :  1e-6,       # 
                    'DN'         :  0.1/100,
                    'NF'         :  0,     # electrons 
-                   'FWC'        : 1.4e5
+                   'FWC'        : 1.4e5,
+                   'C_ray_r'    :  2/50
                    }
 
     if band not in ['G','UV','U']:
@@ -81,6 +82,7 @@ class Imager():
         self.response_funcs      = [ 'U/M1.dat,5','U/Dichroic.dat,2','U/Filter.dat,1']
       elif band == 'UV':
         self.response_funcs      = [ 'UV/Coating.dat,6','UV/Dichroic.dat,2','UV/Filter.dat,1']
+        
       self.response_funcs = [ f'{data_path}/data/' + i for i in self.response_funcs]
     else:
       self.response_funcs      = response_funcs
@@ -89,8 +91,10 @@ class Imager():
                             self.params['bit_res'])/self.params['FWC']
     self.exp_time    = exp_time  # seconds
     self.df          = df
+    
+    self.n_cosmic_ray_hits = int(self.exp_time*self.params['C_ray_r'])
 
-    if self.df is not None or self.name is not None:
+    if self.df is not None:
         self.init_df()
         self.init_psf_patch() 
     else:
@@ -100,11 +104,9 @@ class Imager():
 
     wav = np.linspace(1000,9000,10000)
     flux = (c*1e2*3.631e-20)/(wav**2*1e-8) 
-    fig, ax, data, params = bandpass(wav,flux,self.response_funcs)
     
-    self.zp_fig = fig
-    self.zp_ax  = ax
-
+    fig, ax, data, params = bandpass(wav,flux,self.response_funcs, plot = False)
+    
     lambda_phot, int_flux, W_eff = params
 
     self.lambda_phot = lambda_phot
@@ -122,10 +124,7 @@ class Imager():
     wav  = filt_dat[:,0]
     flux = filt_dat[:,1]
 
-    fig, ax, data, params = bandpass(wav,flux,self.response_funcs)
-    
-    self.sky_fig = fig
-    self.sky_ax  = ax
+    fig, ax, data, params = bandpass(wav,flux,self.response_funcs, plot = False)
     
     lambda_eff, int_flux, W_eff = params
     self.params['M_sky'] = int_flux
@@ -446,6 +445,11 @@ class Imager():
         self.digital  = np.median(digital_stack, axis = 0)
       elif stack_type == 'mean':
         self.digital  = np.median(digital_stack, axis = 0)
+        
+    for i in range(self.n_cosmic_ray_hits):
+      x = np.random.randint(0,self.n_pix_main)
+      y = np.random.randint(0,self.n_pix_main)
+      self.digital[x,y] = pow(2, self.params['bit_res'])
 
     self.wcs = self.create_wcs(self.n_pix_main,self.ra,self.dec, self.pixel_scale)
 

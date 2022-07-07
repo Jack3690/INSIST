@@ -1,0 +1,12 @@
+MANIFEST.in
+README.md
+setup.py
+src/insist-pista/__init__.py
+src/insist-pista/analysis.py
+src/insist-pista/simulation.py
+src/insist-pista/utils.py
+src/insist_pista.egg-info/PKG-INFO
+src/insist_pista.egg-info/SOURCES.txt
+src/insist_pista.egg-info/dependency_links.txt
+src/insist_pista.egg-info/requires.txt
+src/insist_pista.egg-info/top_level.txt

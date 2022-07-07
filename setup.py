@@ -1,19 +1,19 @@
 from setuptools import setup, find_packages
 
 setup(
-    name          = 'ipista',
+    name          = 'insist-pista',
     version       = '1.0.0',    
     description   = 'An astronomical image simulation package',
     url           = 'https://github.com/Jack3690/INSIST',
     author        = 'Avinash CK',
     author_email  = 'avinashck90@gmail.com',
     license       = 'BSD 2-clause', 
-    package_dir   = {'':'ipista'},
-    packages      = find_packages(where='ipista'),          
+    package_dir   = {'':'src'},
+    packages      = find_packages(where='src'),          
     install_requires =['pandas','matplotlib','astropy','photutils',
                       'numpy', 'seaborn','scipy','pyqt5' ],
     include_package_data = True,  
-    package_data         = {'': ['ipista/data/*']},
+    package_data         = {'': ['insist-pista/data/*']},
    
     classifiers=[
         'Development Status :: 1 - Planning',

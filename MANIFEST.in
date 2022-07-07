@@ -1,0 +1,2 @@
+recursive-include ipista *.py
+recursive-include ipista/ipista/data *

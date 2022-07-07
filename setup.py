@@ -1,18 +1,20 @@
 from setuptools import setup, find_packages
 
 setup(
-    name          = 'pista',
+    name          = 'ipista',
     version       = '1.0.0',    
     description   = 'An astronomical image simulation package',
     url           = 'https://github.com/Jack3690/INSIST',
     author        = 'Avinash CK',
     author_email  = 'avinashck90@gmail.com',
-    license       = 'BSD 2-clause',   
-    packages      = find_packages(),          
+    license       = 'BSD 2-clause', 
+    package_dir   = {'':'ipista'},
+    packages      = find_packages(where='ipista'),          
     install_requires =['pandas','matplotlib','astropy','photutils',
-                       'numpy', 'seaborn','scipy','pyqt5' ],
+                      'numpy', 'seaborn','scipy','pyqt5' ],
     include_package_data = True,  
-    package_data         = {"PSF_Sim" : ["data/*"]},
+    package_data         = {'': ['ipista/data/*']},
+   
     classifiers=[
         'Development Status :: 1 - Planning',
         'Intended Audience :: Science/Research',

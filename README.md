@@ -15,7 +15,7 @@ A python package aimed at simulating astronomical images. The routine simulates 
 Clone the repository.
 Open terminal and go to directory pista
 ```
-pip install . 
+pip install insist-pista
 ```
 The package includes a GUI designed using PyQT5. 
 ![plot](./doc/PISTA.png) 

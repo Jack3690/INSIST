@@ -1,2 +1,2 @@
 recursive-include src *.py
-recursive-include src/insist-pista/data *
+recursive-include src/pista/data *

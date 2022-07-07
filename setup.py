@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name          = 'insist-pista',
-    version       = '1.0.0',    
-    description   = 'An astronomical image simulation package',
+    version       = '0.0.2',    
+    description   = 'Python Image Simulation and Testing Application. An astronomical image simulation package',
     url           = 'https://github.com/Jack3690/INSIST',
     author        = 'Avinash CK',
     author_email  = 'avinashck90@gmail.com',
@@ -13,18 +13,15 @@ setup(
     install_requires =['pandas','matplotlib','astropy','photutils',
                       'numpy', 'seaborn','scipy','pyqt5' ],
     include_package_data = True,  
-    package_data         = {'': ['insist-pista/data/*']},
-   
+    package_data       = {'': ['pista/data/*']},
     classifiers=[
         'Development Status :: 1 - Planning',
         'Intended Audience :: Science/Research',
+	  'Intended Audience :: Astronomy',
+	  'Intended Audience :: Image processing',
         'License :: OSI Approved :: BSD License',  
-        'Operating System :: POSIX :: Linux',        
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
+        'Operating System :: OS Independent',        
+        'Programming Language :: Python :: 3.6',
 	  'Programming Language :: Python :: 3.9',
     ],
    

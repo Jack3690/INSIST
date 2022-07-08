@@ -9,7 +9,11 @@ This is a repository dedicated to data simulations for the Indian Spectroscopic 
 # Packages
 ## PISTA : Python Image Simulation and Testing Application
 A python package aimed at simulating astronomical images. The routine simulates individual stars and adds different noises. The input parameter space is designed to inculcate observational parameters, telescope parameters and detector characteristics.
+<<<<<<< HEAD
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/pista_flow.png?raw=True) 
+=======
+![plot](https://github.com/Jack3690/INSIST/blob/main/doc/pista_flow.png?raw=True) 
+>>>>>>> 0d00f757ca20b63cbe2bd696e5b841bcbc4f71cb
 
 ### Installation
 Clone the repository.
@@ -18,7 +22,11 @@ Open terminal and go to directory pista
 pip install insist-pista
 ```
 The package includes a GUI designed using PyQT5. 
+<<<<<<< HEAD
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/PISTA.png?raw=True) 
+=======
+![Sample Image](https://github.com/Jack3690/INSIST/blob/main/doc/PISTA.png?raw=True) 
+>>>>>>> 0d00f757ca20b63cbe2bd696e5b841bcbc4f71cb
 
 
 # Web Tools

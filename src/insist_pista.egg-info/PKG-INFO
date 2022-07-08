@@ -11,11 +11,7 @@ Classifier: Development Status :: 1 - Planning
 Classifier: Intended Audience :: Science/Research
 Classifier: License :: OSI Approved :: BSD License
 Classifier: Operating System :: OS Independent
-Classifier: Programming Language :: Python :: 2
-Classifier: Programming Language :: Python :: 2.7
-Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.4
-Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.9
 Description-Content-Type: text/markdown
 
@@ -36,7 +32,7 @@ A python package aimed at simulating astronomical images. The routine simulates 
 Clone the repository.
 Open terminal and go to directory pista
 ```
-pip install . 
+pip install insist-pista
 ```
 The package includes a GUI designed using PyQT5. 
 ![plot](./doc/PISTA.png) 

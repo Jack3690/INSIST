@@ -17,8 +17,6 @@ setup(
     classifiers=[
         'Development Status :: 1 - Planning',
         'Intended Audience :: Science/Research',
-	  'Intended Audience :: Astronomy',
-	  'Intended Audience :: Image processing',
         'License :: OSI Approved :: BSD License',  
         'Operating System :: OS Independent',        
         'Programming Language :: Python :: 3.6',

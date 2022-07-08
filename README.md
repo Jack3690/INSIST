@@ -18,7 +18,7 @@ Open terminal and go to directory pista
 pip install insist-pista
 ```
 The package includes a GUI designed using PyQT5. 
-![plot](./doc/PISTA.png) 
+![plot](https://github.com/Jack3690/INSIST/blob/main/doc/PISTA.png) 
 
 
 # Web Tools
@@ -45,32 +45,32 @@ In this notebook, we explore how to simulate Points Spread Functions (PSF) with 
 
 In this section we use Astropy to generate Gaussian and Airy disk PSFs based on FWHM and pixel scale, normalized based on ABmag
 
-![plot](./doc/SPG.png) 
+![plot](https://github.com/Jack3690/INSIST/blob/main/doc/SPG.png) 
 
 ## Image Generation using Source Catalog
 
 In this section we explore how to use a catalog which is either directly acquired or acquired from MAST Casjobs to generate PSF distribuition of a field.
-![plot](./doc/CasJobs.png) 
+![plot](https://github.com/Jack3690/INSIST/blob/main/doc/CasJobs.png) 
 
 ## [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_PSF_Analysis.ipynb)
 
 This notebook contains Python routines used for comparing off axis and on axis PSFs generated using Zemax and HCIPy. The aim is to quantitatively study how presence of an on-axis secondary modifies the PSF, and how it would affect the expected science cases.
-![plot](./doc/off_axis_vs_on_axis.png) 
+![plot](https://github.com/Jack3690/INSIST/blob/main/doc/off_axis_vs_on_axis.png) 
 
 ## [INSIST_PSF_Tool.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynb)
 
 This notebook contains python routines which modularizes image simulation and testing codes presented in PSF_Simulation and PSF_Analysis. The aim is to convert the routines into a python package (PISTA). This notebook show how individual modules  can be tested before integrating into a package.
 
-![plot](./doc/psf_sim.png) 
+![plot](https://github.com/Jack3690/INSIST/blob/main/doc/psf_sim.png) 
 
 ## [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/UV_Stellar_Catalog.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/UV_Stellar_Catalog.ipynb)
 
 This notebook contains routines which allows users to predict UV fluxes of sources using their PanSTARRS optical band magntidues through SED Fitting. The objective is to able to generate a catalog of sources in UV band using optical band magnitudes as input. For SED fitting we utilize Kurucz models http://kurucz.harvard.edu/grids.html
 
 ### Convolving Filters with Stellar models
-![plot](./doc/filter_conv.png) 
+![plot](./https://github.com/Jack3690/INSIST/blob/main/doc/filter_conv.png) 
 ### SED Fitting
-![plot](./doc/sed_fitting.png)
+![plot](https://github.com/Jack3690/INSIST/blob/main/doc/sed_fitting.png)
 
 ## [Exposure_Time_Calculatoripynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator)
 

@@ -68,7 +68,7 @@ class Ui(QtWidgets.QMainWindow):
  
         
     def on_position_changed(self, p):
-        x = (p.x()-95)/(303-95)
+        x = (p.x()-96)/(303-96)
         y = 1-(p.y()-37)/(248-37)
         
         x = int(x*self.n_pix_value)
@@ -87,11 +87,11 @@ class Ui(QtWidgets.QMainWindow):
             ra = np.round(ra,4)
             dec = np.round(dec,4)
             
-        self.statusBar.showMessage(f'RA: {ra}, Dec: {dec}')
+        self.statusBar.showMessage(f'RA: {ra,p.x()}, Dec: {dec,p.y()}')
     
     def on_position_clicked(self,p):
-        x = (p.x()-157)/(367-157)
-        y = 1-(p.y()-36)/(256-36)
+        x = (p.x()-96)/(303-96)
+        y = 1-(p.y()-37)/(248-37)
         x = x*self.n_pix_value
         y = y*self.n_pix_value
         self.x = x
@@ -239,7 +239,8 @@ class Ui(QtWidgets.QMainWindow):
         self.filter_filenames.setText(str([i.split('/')[-1] for i in filters]))
         self.pixel_scale.setText("0.1")
         self.QE_file = f'{data_path}/data/QE.dat'
-        self.QE_filename.setText(self.QE_file.split('/')[-1])        
+        self.QE_filename.setText(self.QE_file.split('/')[-1])   
+        self.cosmic_rays.setChecked(True)
 
     
     def check_params(self):
@@ -562,6 +563,7 @@ class Ui(QtWidgets.QMainWindow):
                        response_funcs = self.response_funcs)
         n = int(self.n_stack.value())
         stack_type = self.stack_type.currentText()
+        sim.cosmic_rays = self.cosmic_rays.isChecked()
         sim(params = self.params,n_stack=n,stack_type=stack_type)
         self.sim = sim
         

@@ -197,7 +197,7 @@
              <x>541</x>
              <y>-1</y>
              <width>281</width>
-             <height>641</height>
+             <height>649</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -680,6 +680,17 @@
                <widget class="QLineEdit" name="DN">
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;DNFP fraction&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QVBoxLayout" name="verticalLayout_2">
+              <item>
+               <widget class="QCheckBox" name="cosmic_rays">
+                <property name="text">
+                 <string>Cosmic Rays</string>
                 </property>
                </widget>
               </item>

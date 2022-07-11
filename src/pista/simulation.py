@@ -47,6 +47,7 @@ class Imager():
     self.DC         = True
     self.DNFP       = True
     self.QN         = True
+    self.cosmic_rays= True
 
     # Parameters
     self.psf_file = psf_file
@@ -451,10 +452,11 @@ class Imager():
       elif stack_type == 'mean':
         self.digital  = np.median(digital_stack, axis = 0)
         
-    for i in range(self.n_cosmic_ray_hits):
-      x = np.random.randint(0,self.n_pix_main)
-      y = np.random.randint(0,self.n_pix_main)
-      self.digital[x,y] = pow(2, self.params['bit_res'])
+    if self.cosmic_rays:
+        for i in range(self.n_cosmic_ray_hits):
+          x = np.random.randint(0,self.n_pix_main)
+          y = np.random.randint(0,self.n_pix_main)
+          self.digital[x,y] = pow(2, self.params['bit_res'])
 
     self.wcs = self.create_wcs(self.n_pix_main,self.ra,self.dec, self.pixel_scale)
 

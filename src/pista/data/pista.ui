@@ -36,7 +36,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>icon.png</normaloff>icon.png</iconset>
+    <normaloff>../../../../../../INSIST/pista/pista/data/icon.png</normaloff>../../../../../../INSIST/pista/pista/data/icon.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="sizePolicy">
@@ -64,7 +64,7 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-71</y>
+         <y>0</y>
          <width>1376</width>
          <height>718</height>
         </rect>
@@ -97,9 +97,9 @@
            <property name="geometry">
             <rect>
              <x>10</x>
-             <y>8</y>
-             <width>521</width>
-             <height>311</height>
+             <y>0</y>
+             <width>511</width>
+             <height>301</height>
             </rect>
            </property>
            <property name="cursor">
@@ -122,9 +122,21 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>81</width>
-              <height>21</height>
+              <width>71</width>
+              <height>20</height>
              </rect>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>90</width>
+              <height>16777215</height>
+             </size>
             </property>
             <item>
              <property name="text">
@@ -167,47 +179,25 @@
              </property>
             </item>
            </widget>
-           <widget class="QWidget" name="horizontalLayoutWidget_14">
+           <widget class="QWidget" name="gridLayoutWidget">
             <property name="geometry">
              <rect>
-              <x>10</x>
+              <x>60</x>
               <y>10</y>
-              <width>501</width>
-              <height>291</height>
+              <width>411</width>
+              <height>281</height>
              </rect>
             </property>
-            <layout class="QHBoxLayout" name="image_box">
-             <property name="spacing">
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QFrame" name="image_frame">
-               <property name="mouseTracking">
-                <bool>true</bool>
-               </property>
-               <property name="tabletTracking">
-                <bool>true</bool>
-               </property>
-               <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
-               </property>
-               <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
-               </property>
-              </widget>
-             </item>
-            </layout>
+            <layout class="QGridLayout" name="image_box"/>
            </widget>
-           <zorder>horizontalLayoutWidget_14</zorder>
-           <zorder>output_select</zorder>
           </widget>
           <widget class="QWidget" name="layoutWidget">
            <property name="geometry">
             <rect>
-             <x>551</x>
-             <y>9</y>
-             <width>271</width>
-             <height>631</height>
+             <x>541</x>
+             <y>-1</y>
+             <width>281</width>
+             <height>641</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -751,7 +741,7 @@
            <property name="geometry">
             <rect>
              <x>830</x>
-             <y>10</y>
+             <y>0</y>
              <width>501</width>
              <height>331</height>
             </rect>
@@ -782,9 +772,9 @@
            <property name="geometry">
             <rect>
              <x>833</x>
-             <y>350</y>
+             <y>340</y>
              <width>491</width>
-             <height>16</height>
+             <height>21</height>
             </rect>
            </property>
            <property name="styleSheet">
@@ -801,10 +791,10 @@ p, li { white-space: pre-wrap; }
           <widget class="QWidget" name="layoutWidget">
            <property name="geometry">
             <rect>
-             <x>10</x>
-             <y>324</y>
+             <x>0</x>
+             <y>310</y>
              <width>522</width>
-             <height>317</height>
+             <height>331</height>
             </rect>
            </property>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -1601,9 +1591,9 @@ p, li { white-space: pre-wrap; }
            <property name="geometry">
             <rect>
              <x>830</x>
-             <y>370</y>
+             <y>360</y>
              <width>501</width>
-             <height>271</height>
+             <height>281</height>
             </rect>
            </property>
            <property name="tabPosition">

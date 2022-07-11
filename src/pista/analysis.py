@@ -95,7 +95,7 @@ class Analyzer(Imager):
       self.header['ZPT']     = zero_p_flux
       self.header['BUNIT']   = 'DN'
       phot_table['mag_out']  = -2.5*np.log10(phot_table['flux']/zero_p_flux)
-      phot_table['mag_err']  =1.087/phot_table['SNR']
+      phot_table['mag_err']  = 1.087/phot_table['SNR']
       
       print("Simulation and Photometry Completed")
 
@@ -131,102 +131,113 @@ class Analyzer(Imager):
     -------
     fig, ax
     """
-    if fig is None or ax is None:
-        fig = plt.figure(figsize = figsize)
-    norm = None
+    if np.all(self.image) !=None :
+        if fig is None or ax is None:
+            fig = plt.figure(figsize = figsize)
+        norm = None
+        
+        if source == 'Digital':
+          data  = self.digital
+          norm = col.LogNorm()
+        elif source =='Charge':
+          data  = self.charge
+          norm = col.LogNorm()
+        elif source == 'Sky':
+          data = self.sky_photoelec
+        elif source == 'DC':
+          data = self.DC_array
+        elif source == 'QE':
+          data = self.qe_array
+        elif source =='Bias':
+          data = self.bias_array + self.DC_array 
+        elif source == 'PRNU':
+          data = self.PRNU_array
+        elif source == 'DNFP':
+          norm = col.LogNorm()
+          data = self.DNFP_array
+        elif source == 'QN':
+          data = self.QN_array
     
-    if source == 'Digital':
-      data  = self.digital
-      norm = col.LogNorm()
-    elif source =='Charge':
-      data  = self.charge
-      norm = col.LogNorm()
-    elif source == 'Sky':
-      data = self.sky_photoelec
-    elif source == 'DC':
-      data = self.DC_array
-    elif source == 'QE':
-      data = self.qe_array
-    elif source =='Bias':
-      data = self.bias_array + self.DC_array 
-    elif source == 'PRNU':
-      data = self.PRNU_array
-    elif source == 'DNFP':
-      norm = col.LogNorm()
-      data = self.DNFP_array
-    elif source == 'QN':
-      data = self.QN_array
-
-    if show_wcs:
-        ax = fig.add_subplot(projection=self.wcs)
+        if show_wcs:
+            ax = fig.add_subplot(projection=self.wcs)
+        else:
+            ax = fig.add_subplot()
+        ax.patch.set_edgecolor('black')  
+        ax.patch.set_linewidth('3') 
+        img = ax.imshow(data,cmap=cmap , norm = norm)
+        plt.colorbar(img,ax = ax)
+        ax.set_title(f'{source} \nRequested center : {self.name}')
+        ax.grid(False)
+        if download:
+            fig.savefig(f"{source}.png", format = 'png')
+        return fig,ax
     else:
-        ax = fig.add_subplot()
-    ax.patch.set_edgecolor('black')  
-    ax.patch.set_linewidth('3') 
-    img = ax.imshow(data,cmap=cmap , norm = norm)
-    plt.colorbar(img,ax = ax)
-    ax.set_title(f'{source} \nRequested center : {self.name}')
-    ax.grid(False)
-    if download:
-        fig.savefig(f"{source}.png", format = 'png')
-    return fig,ax
+        print("Run Simulation")
+        
 
   def show_hist(self, source = 'Digital',bins = None,
                  fig = None, ax = None,figsize=(15,8)):
-     
-    if fig is None or ax is None: 
-        fig, ax = plt.subplots(1,1,figsize=figsize)
-
-    if source == 'Digital':
-      data  = self.digital.ravel()
-    elif source =='Charge':
-      data  = self.charge.ravel()
-      norm = col.LogNorm()
-    elif source == 'Sky':
-      data = self.sky_photoelec.ravel()
-    elif source == 'DC':
-      data = self.DC_array.ravel()
-    elif source == 'QE':
-      data = self.qe_array
-    elif source =='Bias':
-      data = (self.bias_array + self.DC_array).ravel()
-    elif source == 'PRNU':
-      data = self.PRNU_array.ravel()
-    elif source == 'DNFP':
-      data = self.DNFP_array.ravel()
-    elif source == 'QN':
-      data = self.QN_array.ravel()
-
-    if bins is None:
-      bins  = np.linspace(data.min(), data.max(), 20)
-    ax.hist(data, bins = bins)
-    ax.set_title(f'{source} histogram')
-    ax.set_ylabel('Count')
-    ax.set_yscale('log')
-    return fig, ax
+   
+    if np.all(self.image) !=None :
+        if fig is None or ax is None: 
+            fig, ax = plt.subplots(1,1,figsize=figsize)
+    
+        if source == 'Digital':
+          data  = self.digital.ravel()
+        elif source =='Charge':
+          data  = self.charge.ravel()
+          norm = col.LogNorm()
+        elif source == 'Sky':
+          data = self.sky_photoelec.ravel()
+        elif source == 'DC':
+          data = self.DC_array.ravel()
+        elif source == 'QE':
+          data = self.qe_array
+        elif source =='Bias':
+          data = (self.bias_array + self.DC_array).ravel()
+        elif source == 'PRNU':
+          data = self.PRNU_array.ravel()
+        elif source == 'DNFP':
+          data = self.DNFP_array.ravel()
+        elif source == 'QN':
+          data = self.QN_array.ravel()
+    
+        if bins is None:
+          bins  = np.linspace(data.min(), data.max(), 20)
+        ax.hist(data, bins = bins)
+        ax.set_title(f'{source} histogram')
+        ax.set_ylabel('Count')
+        ax.set_yscale('log')
+        return fig, ax
+    else:
+        print("Run Simulation")
 
   def getImage(self,source = 'Digital'):
-    if source == 'Digital':
-        data  = self.digital
-    elif source =='Charge':
-        data  = self.charge
-    elif source == 'Sky':
-        data = self.sky_photoelec
-    elif source == 'DC':
-        data = self.DC_array
-    elif source == 'QE':
-        data = self.qe_array
-    elif source =='Bias':
-        data = (self.bias_array + self.DC_array)
-    elif source == 'PRNU':
-        data = self.PRNU_array
-    elif source == 'DNFP':
-        data = self.DNFP_array
-    elif source == 'QN':
-        data = self.QN_array
+      
+    if np.all(self.image) !=None :
+        if source == 'Digital':
+            data  = self.digital
+        elif source =='Charge':
+            data  = self.charge
+        elif source == 'Sky':
+            data = self.sky_photoelec
+        elif source == 'DC':
+            data = self.DC_array
+        elif source == 'QE':
+            data = self.qe_array
+        elif source =='Bias':
+            data = (self.bias_array + self.DC_array)
+        elif source == 'PRNU':
+            data = self.PRNU_array
+        elif source == 'DNFP':
+            data = self.DNFP_array
+        elif source == 'QN':
+            data = self.QN_array
+        else:
+            data = 0
+        return data
     else:
-        data = 0
-    return data
+      print("Run Simulation")
 
   def writeto(self,name,source = 'Digital', user_source = None):
     """
@@ -265,4 +276,4 @@ class Analyzer(Imager):
       hdul = fits.HDUList([hdu])
       hdul.writeto(f'{name}',overwrite= True)
     else:
-      print("Generate PSF")
+      print("Run Simulation")

@@ -68,8 +68,8 @@ class Ui(QtWidgets.QMainWindow):
  
         
     def on_position_changed(self, p):
-        x = (p.x()-158)/(371-158)
-        y = 1-(p.y()-36)/(256-36)
+        x = (p.x()-95)/(303-95)
+        y = 1-(p.y()-37)/(248-37)
         
         x = int(x*self.n_pix_value)
         y = int(y*self.n_pix_value)

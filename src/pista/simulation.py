@@ -50,6 +50,9 @@ class Imager():
 
     # Parameters
     self.psf_file = psf_file
+    if self.psf_file is None:
+        
+        psf_file =  f'{data_path}/data/off_axis_hcipy.npy'
     self.n_pix_main  = n_pix
     self.pixel_scale = 0.1
     self.fov         = (n_pix*0.1)/3600 # Degrees 
@@ -91,6 +94,7 @@ class Imager():
                             self.params['bit_res'])/self.params['FWC']
     self.exp_time    = exp_time  # seconds
     self.df          = df
+    self.sim_flag = False 
     
     self.n_cosmic_ray_hits = int(self.exp_time*self.params['C_ray_r'])
 
@@ -389,6 +393,7 @@ class Imager():
      Final image array after adding all layers of simulation
     
     """
+    self.sim_flag = True
     if params is not None:
       self.params.update(params)
       self.gain        = self.params['G1']*pow(2,

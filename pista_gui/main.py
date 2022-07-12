@@ -66,7 +66,6 @@ class Ui(QtWidgets.QMainWindow):
         self.download_image.clicked.connect(self.download_img)
     
  
-        
     def on_position_changed(self, p):
         x = (p.x()-96)/(303-96)
         y = 1-(p.y()-37)/(248-37)
@@ -241,6 +240,7 @@ class Ui(QtWidgets.QMainWindow):
         self.QE_file = f'{data_path}/data/QE.dat'
         self.QE_filename.setText(self.QE_file.split('/')[-1])   
         self.cosmic_rays.setChecked(True)
+        self.QE.setChecked(True)
 
     
     def check_params(self):
@@ -358,40 +358,41 @@ class Ui(QtWidgets.QMainWindow):
                 if f'{filt},{1}' not in self.response_funcs:
                     if os.path.exists(filt):
                         self.response_funcs.append(f'{filt},{1}')
-          # QE
-        if len(self.QE_filename.text())<1:
-            self.QE_file = f'{data_path}/data/QE.dat'
-            self.QE_filename.setText('QE.dat')
-            self.response_funcs.append(f'{self.QE_file},1')
-        else:
-            if f'{self.QE_file},{1}' not in self.response_funcs:
-                if os.path.exists(self.QE_file):
-                    self.response_funcs.append(f'{self.QE_file},1')
-           
-        qe_mean = self.qe_mean.text() 
-        if len(qe_mean)<1:
-            self.qe_mean.setText('0.5')
-            self.params['qe_mean'] = 0.5
-        elif self.check_input(qe_mean):
-            qe_mean = float(qe_mean)     
-            if qe_mean>0 and qe_mean <= 1:
-                self.params['qe_mean'] = qe_mean
+        # QE
+        if self.QE.isChecked():
+            if len(self.QE_filename.text())<1:
+                self.QE_file = f'{data_path}/data/QE.dat'
+                self.QE_filename.setText('QE.dat')
+                self.response_funcs.append(f'{self.QE_file},1')
             else:
+                if f'{self.QE_file},{1}' not in self.response_funcs:
+                    if os.path.exists(self.QE_file):
+                        self.response_funcs.append(f'{self.QE_file},1')
+               
+            qe_mean = self.qe_mean.text() 
+            if len(qe_mean)<1:
                 self.qe_mean.setText('0.5')
                 self.params['qe_mean'] = 0.5
-        
-        qe_sigma = self.qe_sigma.text()
-        if len(qe_sigma)<1:
-            self.qe_sigma.setText('0.01')
-            self.params['qe_sigma'] = 0.01
-        elif self.check_input(qe_sigma):
-            qe_sigma  = float(qe_sigma)  
+            elif self.check_input(qe_mean):
+                qe_mean = float(qe_mean)     
+                if qe_mean>0 and qe_mean <= 1:
+                    self.params['qe_mean'] = qe_mean
+                else:
+                    self.qe_mean.setText('0.5')
+                    self.params['qe_mean'] = 0.5
             
-            if qe_sigma <0.6*self.params['qe_mean']:
-                self.params['qe_sigma'] = qe_sigma
-            else:
+            qe_sigma = self.qe_sigma.text()
+            if len(qe_sigma)<1:
                 self.qe_sigma.setText('0.01')
                 self.params['qe_sigma'] = 0.01
+            elif self.check_input(qe_sigma):
+                qe_sigma  = float(qe_sigma)  
+                
+                if qe_sigma <0.6*self.params['qe_mean']:
+                    self.params['qe_sigma'] = qe_sigma
+                else:
+                    self.qe_sigma.setText('0.01')
+                    self.params['qe_sigma'] = 0.01
                 
         bias = self.bias.text()
         if len(bias)<1:
@@ -554,6 +555,7 @@ class Ui(QtWidgets.QMainWindow):
                     self.params['pix_area'] = 1e-6
             
     def simulate_btn(self):
+        
         self.params = {}
         self.error_box.setText('')
         self.check_params()
@@ -564,10 +566,17 @@ class Ui(QtWidgets.QMainWindow):
         n = int(self.n_stack.value())
         stack_type = self.stack_type.currentText()
         sim.cosmic_rays = self.cosmic_rays.isChecked()
+        sim.QE      = self.QE.isChecked()
+        if self.shot_noise_type.currentText()=='None':
+            sim.shot_noise = False
         sim(params = self.params,n_stack=n,stack_type=stack_type)
         self.sim = sim
+        self.make_plots()
+        
+    def make_plots(self):
         
         plt.ioff()
+        sim = self.sim
         # Main Image    
         if self.count_sims>1:
             self.canvas_img.figure.clear()

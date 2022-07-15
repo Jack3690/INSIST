@@ -4,17 +4,17 @@ import pandas as pd
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
+from astropy.io import fits
 from scipy.constants import c
 import os
 from pathlib import Path
 import json
 import requests
 from .utils import bandpass
-
 data_path = Path(__file__).parent.joinpath()
 
 class Imager():
-  def __init__(self,df, cols, psf_file ,exp_time,n_pix, response_funcs,band):   
+  def __init__(self,df, cols, psf_file ,exp_time,n_pix, response_funcs,pixel_scale):   
     """Image simulation using Source catalog. Class which simulates the field 
     and creates image
 
@@ -55,8 +55,8 @@ class Imager():
         
         psf_file =  f'{data_path}/data/off_axis_hcipy.npy'
     self.n_pix_main  = n_pix
-    self.pixel_scale = 0.1
-    self.fov         = (n_pix*0.1)/3600 # Degrees 
+    self.pixel_scale = pixel_scale
+    self.fov         = (n_pix*self.pixel_scale)/3600 # Degrees 
     self.radius      = self.fov/2
 
     self.params = {'shot_noise' : 'Gaussian',
@@ -76,18 +76,9 @@ class Imager():
                    'C_ray_r'    :  2/50
                    }
 
-    if band not in ['G','UV','U']:
-      band = 'UV'
-
     if response_funcs is None:
-      if band == 'G':
-        self.response_funcs      = [ 'G/M1.dat,5','G/Dichroic.dat,1','G/Filter.dat,1']
-      elif band == 'U':
-        self.response_funcs      = [ 'U/M1.dat,5','U/Dichroic.dat,2','U/Filter.dat,1']
-      elif band == 'UV':
-        self.response_funcs      = [ 'UV/Coating.dat,6','UV/Dichroic.dat,2','UV/Filter.dat,1']
-        
-      self.response_funcs = [ f'{data_path}/data/' + i for i in self.response_funcs]
+        self.response_funcs      = [ 'UV/Coating.dat,6','UV/Dichroic.dat,2','UV/Filter.dat,1']  
+        self.response_funcs = [ f'{data_path}/data/' + i for i in self.response_funcs]
     else:
       self.response_funcs      = response_funcs
 
@@ -135,8 +126,15 @@ class Imager():
     self.params['M_sky'] = int_flux
     self.M_sky_p         = self.params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
     
-    image =  np.load(f'{self.psf_file}')
-    image /= image.sum()
+    ext = self.psf_file.split('.')[-1]
+    
+    if ext=='npy':
+        image =  np.load(self.psf_file)
+    elif ext=='fits':
+        image = fits.open(self.psf_file)[0].data
+        
+        
+    image /= image.sum()  # Flux normalized to 1
     self.image_g_sub = image
     F_sky_p           = self.zero_mag_s_on*pow(10,-0.4*self.M_sky_p)
     self.sky_bag_flux = F_sky_p    
@@ -178,7 +176,10 @@ class Imager():
     """
           
     self.n_pix_sub  = self.image_g_sub.shape[0]
-    self.n_pix_main += self.n_pix_sub+1
+    if self.n_pix_sub%2!=0:
+        self.n_pix_main += self.n_pix_sub -1
+    else:
+        self.n_pix_main += self.n_pix_sub
 
     self.image    = np.zeros((self.n_pix_main, self.n_pix_main))
     self.wcs      = self.create_wcs(self.n_pix_main,self.ra, self.dec, self.pixel_scale)
@@ -245,6 +246,9 @@ class Imager():
       self.PRNU_array =  np.random.normal(loc=0, 
                                         scale = self.params['PRNU_frac'],
                                         size=(n_pix, n_pix))
+    else:
+       self.PRNU_array = 0
+       
     if self.DC:
       self.DR = self.dark_current(self.params['T'], self.params['DFM'], 
                                   self.params['pixel_area'])
@@ -252,12 +256,15 @@ class Imager():
       self.DC_array = np.random.normal(loc = self.DR*self.exp_time, 
                                           scale = np.sqrt(self.DR*self.exp_time),
                                           size=(n_pix, n_pix))
-
+    else: 
+        self.DC_array = 0
     if self.DNFP and self.DC:
       self.DNFP_array =  np.random.lognormal(mean= 0, 
                                     sigma = self.exp_time*self.DR*self.params['DN'],
                                     size=(n_pix, n_pix))
       self.DC_array*=(1 + self.DNFP_array)
+    else:
+        self.DNFP_array = 0
 
     if self.QN:
       self.QN_value = (self.params['FWC']/(pow(2,self.params['bit_res'])
@@ -329,15 +336,20 @@ class Imager():
         flux  = self.zero_flux*10**(-ABmag/2.5)  # Photo-elec per second
 
         patch =  flux*self.image_g_sub
-
-        x1 = pix[0] - patch_width
+        
+        
+        x1 = abs(pix[0]) - patch_width
         x2 = x1 + npix_s
         y1 = pix[1] - patch_width
         y2 = y1 + npix_s
+        print(pix[0],pix[1])
 
         image[ x1: x2, y1:y2 ] += patch
 
-    image   = image[patch_width+1:-patch_width-1,patch_width+1:-patch_width-1]
+    if npix_s%2!=0:
+        image = image[patch_width:-patch_width,patch_width:-patch_width]
+    else:
+        image = image[patch_width:-patch_width,patch_width:-patch_width]
 
     return image
 

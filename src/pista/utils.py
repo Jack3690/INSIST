@@ -5,7 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sb
 
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, interp2d
 from scipy.integrate import trapz
 from pathlib import Path
 from astropy.modeling import models
@@ -91,3 +91,6 @@ def generate_psf(npix,sigma, function = 'Gaussian'):
         psf     = models.Gaussian2D(1,500,500,sigma,sigma)(xx,yy)
         psf/=psf.sum()
     return psf
+
+    
+    

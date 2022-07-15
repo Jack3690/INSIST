@@ -11,12 +11,12 @@ class Analyzer(Imager):
   def __init__(self, df = None, cols = None,
                psf_file = f'{data_path}/data/off_axis_hcipy.npy',
                exp_time = 100,n_pix = 2000, response_funcs = None
-               ,band = 'G'):
+               ,pixel_scale = 0.1):
       
       super().__init__(df=df, cols=cols, exp_time = exp_time,
                        psf_file = psf_file, n_pix = n_pix, 
                        response_funcs = response_funcs
-                       , band = band)
+                       , pixel_scale = pixel_scale)
       """
       
       A class to visualize and analyze the simulated image
@@ -57,10 +57,13 @@ class Analyzer(Imager):
     TBW
     """
     
-    if do_photometry: 
-      c          = SkyCoord(self.df['ra'], self.df['dec'],unit=u.deg)
-      data       = self.digital.astype(float)
-      wcs        = self.wcs
+    if do_photometry and len(self.df)>1:
+      self.data_jy, self.phot_table = self.photometry(self.digital.astype(float),
+                                                   self.wcs,self.df)
+
+  def photometry(self,data,wcs,df):
+
+      c          = SkyCoord(df['ra'], df['dec'],unit=u.deg)
       pix        = wcs.world_to_array_index(c)
 
       position   = [(i,j) for i,j in zip(pix[1],pix[0])]
@@ -77,29 +80,27 @@ class Analyzer(Imager):
       phot_table['flux_err'] = np.sqrt( phot_table['flux'].value  + phot_table['sky_flux'].value )
   
       phot_table['SNR']      = phot_table['flux'].value/ phot_table['flux_err'].value
-      phot_table['mag_in']   = self.df['mag'].values
+      phot_table['mag_in']   = df['mag'].values
       
-      zero_p_flux = 0
       if len(phot_table)>3:
+          zero_p_flux = 0
           for i in range(3):
             zero_p_flux += phot_table['flux'].value[i]/pow(10,-0.4*phot_table['mag_in'].value[i])
           zero_p_flux/=3
       elif len(phot_table)==1:
           zero_p_flux = phot_table['flux'].value[0]/pow(10,-0.4*phot_table['mag_in'].value[0])
-      else:
-          zero_p_flux = phot_table['flux'].value[0]
-          
-          
-
+        
+      data_jy= data*(3631/zero_p_flux)
+      
       self.header['EXPTIME'] = self.exp_time
       self.header['ZPT']     = zero_p_flux
       self.header['BUNIT']   = 'DN'
       phot_table['mag_out']  = -2.5*np.log10(phot_table['flux']/zero_p_flux)
-      phot_table['mag_err']  = 1.087/phot_table['SNR']
-      
-      print("Simulation and Photometry Completed")
+      phot_table['mag_err']  = 1.082/phot_table['SNR']
 
       self.phot_table = phot_table
+
+      return data_jy, phot_table
 
   def show_field(self,figsize=(10,10)):
     """

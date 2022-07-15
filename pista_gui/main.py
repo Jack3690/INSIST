@@ -203,6 +203,7 @@ class Ui(QtWidgets.QMainWindow):
         self.check_abmag.setChecked(True)
         self.exp_time.setText('60')
         self.shot_noise_type.setCurrentText('Gaussian')
+        self.sky_shot_noise_type.setCurrentText('Gaussian')
         
         self.qe_mean.setText(str(sim.params['qe']))
         self.qe_sigma.setText(str(sim.params['qe_sigma']))
@@ -234,6 +235,7 @@ class Ui(QtWidgets.QMainWindow):
                    f'{data_path}/data/UV/Dichroic.dat',
                    f'{data_path}/data/UV/Dichroic.dat']
         
+        self.pixel_
         self.filter_files =  [f'{i},1' for i in filters]
         self.filter_filenames.setText(str([i.split('/')[-1] for i in filters]))
         self.pixel_scale.setText("0.1")
@@ -241,10 +243,9 @@ class Ui(QtWidgets.QMainWindow):
         self.QE_filename.setText(self.QE_file.split('/')[-1])   
         self.cosmic_rays.setChecked(True)
         self.QE.setChecked(True)
+        self.QN.setChecked(True)
 
-    
-    def check_params(self):
-        
+    def check_params(self):    
         try:
             if not os.path.exists(self.source_file):
                 self.source_file = None
@@ -276,7 +277,7 @@ class Ui(QtWidgets.QMainWindow):
             
         if self.check_abmag.isChecked():
             abmag = self.abmag.text()
-            if len(abmag)>=1 and self.check_input(abmag):
+            if len(abmag)>0 and self.check_input(abmag):
                 abmag = float(abmag)
             else : 
                 self.error_box.setText("Error: ABmag should be a real number."
@@ -290,7 +291,7 @@ class Ui(QtWidgets.QMainWindow):
                                    columns = ['ra','dec','mag'])
             
         exp_time = self.exp_time.text()
-        if len(exp_time)>=1 and self.check_input(exp_time):
+        if len(exp_time)>0 and self.check_input(exp_time):
             self.exp_time_value = float(exp_time)
             if self.exp_time_value<0:
                 self.error_box.setText("Error: Exposure should be a positive real number."
@@ -301,26 +302,27 @@ class Ui(QtWidgets.QMainWindow):
             self.exp_time_value = 60
             self.error_box.setText("Error: Exposure should be a positive real number."
                                     + " Default Exposure time set")
-         
+        
+        pixel_scale = self.pixel_scale.text()
+        if len(pixel_scale)> 0 and self.check_input(pixel_scale):
+            pixel_scale = abs(float(pixel_scale))
+            self.ps_value = pixel_scale
+        else:
+            pixel_scale = 0.1
+            self.pixel_scale.setText('0.1')
+            self.ps_value = pixel_scale
+            
         psf_filename = self.psf_filename.text()
         if self.psf_file is None or len(psf_filename)<1 :
             fwhm = self.fwhm.text()
-            if len(fwhm)>=1:
+            if len(fwhm)>0:
                 if self.check_input(fwhm):
                     fwhm   = float(fwhm)
                 else:
                     self.fwhm.setText('0.1')
                     fwhm = 0.1
-                    
-                pixel_scale = self.pixel_scale.text()
-                if len(pixel_scale)> 1 and self.check_input(pixel_scale):
-                    pixel_scale = float(pixel_scale)
-                else:
-                    pixel_scale = 0.1
-                    self.pixel_scale.setText('0.1')
-                
                           
-                fwhm_in = fwhm/pixel_scale
+                fwhm_in = fwhm/self.ps_value
                 sigma   = fwhm_in*gaussian_fwhm_to_sigma
                 
                 psf = generate_psf(1001,sigma)
@@ -562,13 +564,22 @@ class Ui(QtWidgets.QMainWindow):
         self.statusBar.showMessage('Simulating Image')
         sim = Analyzer(df = self.df, cols = {'mag_nuv' :'mag'}, psf_file = self.psf_file
                        , exp_time = self.exp_time_value,n_pix= self.n_pix_value,
-                       response_funcs = self.response_funcs)
+                       response_funcs = self.response_funcs
+                       , pixel_scale = self.ps_value)
         n = int(self.n_stack.value())
         stack_type = self.stack_type.currentText()
+        
         sim.cosmic_rays = self.cosmic_rays.isChecked()
         sim.QE      = self.QE.isChecked()
+        sim.QN      = self.QN.isChecked()
+        sim.PRNU    = self.PRNU.isChecked()
+        sim.DC      = self.DC.isChecked()
+        sim.DNFP    = self.DNFP.isChecked()
         if self.shot_noise_type.currentText()=='None':
             sim.shot_noise = False
+        if self.sky_shot_noise_type.currentText()=='None':
+            sim.sky = False
+
         sim(params = self.params,n_stack=n,stack_type=stack_type)
         self.sim = sim
         self.make_plots()
@@ -629,7 +640,16 @@ class Ui(QtWidgets.QMainWindow):
             
             
             # PSF
-            self.psf_data = np.load(self.psf_file)
+            ax = self.canvas_panel.figure.add_subplot(g[0,1])
+            ext = self.psf_file.split('.')[-1]
+            if ext =='npy':
+                self.psf_data = np.load(self.psf_file)
+                ax.set_title('Point Spread Function', fontsize = 10)
+            elif ext =='fits':
+                hdu = fits.open(self.psf_file)[0]
+                self.psf_data = hdu.data
+                ax.set_title(f"Point Spread Function\n Pixel scale : {hdu.header['PIXELSCL']}"
+                         , fontsize = 10)
             if self.psf_data.min()<0:
                 self.psf_data-= self.psf_data.min() + 1e-3
             ax = self.canvas_panel.figure.add_subplot(g[0,1])
@@ -637,7 +657,7 @@ class Ui(QtWidgets.QMainWindow):
             ax.imshow(self.psf_data, cmap = 'jet',
                                extent = (-1,1,-1,1), norm = col.LogNorm())
             ax.grid(False)
-            ax.set_title('Point Spread Function', fontsize = 10)
+
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             
@@ -662,15 +682,16 @@ class Ui(QtWidgets.QMainWindow):
             x = np.where(x==0,np.nan,x)
             ax.plot(x,y,'.', color ='red')
             
-            x = (sim.photoelec_array-sim.DC_array).ravel()
-            y = x/np.sqrt(sim.photoelec_array + sim.DC_array**2
-                          + (sim.photoelec_array*sim.PRNU_array)**2 + 
-                          (sim.DC_array*sim.DNFP_array)**2).ravel()
-            
-            x = np.where(x==0,np.nan,x)
-            y = np.where(y==0,np.nan,y)
-            
-            ax.plot(x,y,'.', color ='purple')
+            if self.DC.isChecked():
+                x = (sim.photoelec_array-sim.DC_array).ravel()
+                y = x/np.sqrt(sim.photoelec_array + sim.DC_array**2
+                              + (sim.photoelec_array*sim.PRNU_array)**2 + 
+                              (sim.DC_array*sim.DNFP_array)**2).ravel()
+                
+                x = np.where(x==0,np.nan,x)
+                y = np.where(y==0,np.nan,y)
+                
+                ax.plot(x,y,'.', color ='purple')
             
             x =  np.linspace(1,1e11)
             y = x*0 +3
@@ -713,15 +734,24 @@ class Ui(QtWidgets.QMainWindow):
             
             
             # PSF
-            self.psf_data = np.load(self.psf_file)
-            if self.psf_data.min()<0:
-                self.psf_data-= self.psf_data.min() + 1e-3
             ax = self.canvas_panel.figure.add_subplot(g[0,1])
-            
+            ext = self.psf_file.split('.')[-1]
+            if ext =='npy':
+                self.psf_data = np.load(self.psf_file)
+                ax.set_title('Point Spread Function', fontsize = 10)
+            elif ext =='fits':
+                hdu = fits.open(self.psf_file)[0]
+                self.psf_data = hdu.data
+                ax.set_title(f"Point Spread Function\n Pixel scale : {hdu.header['PIXELSCL']}"
+                             , fontsize = 10)
+            if self.psf_data.min()<=0:
+                self.psf_data+= -self.psf_data.min() + 1e-2
+
+        
             ax.imshow(self.psf_data, cmap = 'jet',
                                extent = (-1,1,-1,1), norm = col.LogNorm())
             ax.grid(False)
-            ax.set_title('Point Spread Function', fontsize = 10)
+           
             ax.set_xlabel('x')
             ax.set_ylabel('y')
             
@@ -747,17 +777,17 @@ class Ui(QtWidgets.QMainWindow):
             y = x/np.sqrt(sim.source_photons).ravel()
             x = np.where(x==0,np.nan,x)
             ax.plot(x,y,'.', color ='red')
-            
-            x = (sim.photoelec_array-sim.DC_array).ravel()
-            y = x/np.sqrt(sim.photoelec_array + sim.DC_array**2
+            if self.DC.isChecked():
+                x = (sim.photoelec_array-sim.DC_array).ravel()
+                y = x/np.sqrt(sim.photoelec_array + sim.DC_array**2
                           + (sim.photoelec_array*sim.PRNU_array)**2 + 
                           (sim.DC_array*sim.DNFP_array)**2).ravel()
-            
-            ax.set_ylim(1e-2,1e11)
-            x = np.where(x==0,np.nan,x)
-            y = np.where(y==0,np.nan,y)
-            
-           
+                
+                ax.set_ylim(1e-2,1e11)
+                x = np.where(x==0,np.nan,x)
+                y = np.where(y==0,np.nan,y)
+                
+               
             ax.plot(x,y,'.', color ='purple')
             
             x =  np.linspace(1,1e11)
@@ -948,7 +978,8 @@ class Ui(QtWidgets.QMainWindow):
     def download_img(self):
         source = self.output_select.currentText()
         if self.sim is not None:
-            self.sim.writeto(name = f'{source}.fits',source = source)             
+            self.sim.writeto(name = f'{source}.fits',source = source)   
+            self.statusBar.showMessage(f'Downloading Image to : {data_path}')
             
 if __name__ == "__main__":
     import sys

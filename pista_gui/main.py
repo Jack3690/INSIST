@@ -649,7 +649,7 @@ class Ui(QtWidgets.QMainWindow):
                 hdu = fits.open(self.psf_file)[0]
                 self.psf_data = hdu.data
                 ax.set_title(f"Point Spread Function\n Pixel scale : {hdu.header['PIXELSCL']}"
-                         , fontsize = 10)
+                         , fontsize = 7)
             if self.psf_data.min()<0:
                 self.psf_data-= self.psf_data.min() + 1e-3
             ax = self.canvas_panel.figure.add_subplot(g[0,1])
@@ -719,7 +719,7 @@ class Ui(QtWidgets.QMainWindow):
             self.canvas_panel = FigureCanvas()
             fig = self.canvas_panel.figure
             # Bandpass Zero point
-            self.wav_zp = np.linspace(1000,9000,10000)
+            self.wav_zp = np.linspace(1000,25000,10000)
             self.flux_zp = (c*1e2*3.631e-20)/(self.wav_zp**2*1e-8) 
             axes = []
             
@@ -743,7 +743,7 @@ class Ui(QtWidgets.QMainWindow):
                 hdu = fits.open(self.psf_file)[0]
                 self.psf_data = hdu.data
                 ax.set_title(f"Point Spread Function\n Pixel scale : {hdu.header['PIXELSCL']}"
-                             , fontsize = 10)
+                             , fontsize = 7)
             if self.psf_data.min()<=0:
                 self.psf_data+= -self.psf_data.min() + 1e-2
 

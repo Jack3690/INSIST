@@ -98,7 +98,7 @@ class Imager():
 
   def init_psf_patch(self, return_psf = False):
 
-    wav = np.linspace(1000,9000,10000)
+    wav = np.linspace(1000,25000,10000)
     flux = (c*1e2*3.631e-20)/(wav**2*1e-8) 
     
     fig, ax, data, params = bandpass(wav,flux,self.response_funcs, plot = False)

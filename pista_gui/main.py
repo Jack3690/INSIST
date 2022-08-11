@@ -44,17 +44,22 @@ class HoverTracker(QObject):
         elif obj is self.widget and event.type()== QEvent.MouseButtonPress:
             self.clicked.emit(event.pos())
         return super().eventFilter(obj, event)
-    
+
 class Ui(QtWidgets.QMainWindow):
     def __init__(self):
         self.df             = None
+        self.source_file    = None
+        self.filter_files   = None
         self.psf_file       = None
+        
         self.sim            = None
         self.count_sims = 1
         self.response_funcs = []
         
+        
         super(Ui, self).__init__() # Call the inherited classes __init__ method
         uic.loadUi(f'{data_path}/data/pista.ui', self) # Load the .ui file
+        self.setWindowIcon(QIcon(f'{data_path}/data/icon.png'))
         self.upload.clicked.connect(self.upload_source)
         self.set_default.clicked.connect(self.setdefault)
         self.upload_psf.clicked.connect(self.upload_psf_btn)
@@ -64,6 +69,9 @@ class Ui(QtWidgets.QMainWindow):
         self.upload_QE_wav.clicked.connect(self.upload_QE_wav_btn)
         self.generate.clicked.connect(self.generate_1d)
         self.download_image.clicked.connect(self.download_img)
+        
+    def __del__(self):
+        plt.close()
     
  
     def on_position_changed(self, p):
@@ -126,31 +134,57 @@ class Ui(QtWidgets.QMainWindow):
                 flag = False
                 break
         return flag
-                
+    def check_dat_params(self,dat_file):
+        data = np.loadtxt(dat_file)
+        if data.shape[1]==2:
+            return True
+        else:
+            return False
+                     
     def upload_source(self):
         filters = "FITS (*.fit*);;CSV (*.csv);;DAT (*.dat)"
+
+        
         self.source_file = QFileDialog.getOpenFileName(filter = filters)[0]
         self.source.setText(self.source_file.split('/')[-1])
-        if len(self.source.text())>4:
-            ext = self.source_file.split('.')[-1]
+        ext = self.source_file.split('.')[-1]
+        flag = True
+        if os.path.exists(self.source_file):
             if ext =='fits' or ext =='fit':
-                tab = Table.read(self.source_file)
-                df  = tab.to_pandas()
-                df  = df.dropna()
-                if self.check_df_params(df):
-                    self.df = df
+                hdu = fits.open(self.source_file)
+                if hdu[1].header['XTENSION']=='BINTABLE':
+                    print('HDU')
+                    tab = Table(hdu[1].data)
+                    df  = tab.to_pandas()
+                    df  = df.dropna()
+                    if self.check_df_params(df):
+                        self.df = df
+                    else:
+                        self.statusBar.showMessage('Error: Invalid input')
+                        self.abmag.setChecked(True)   
+                        flag = False
                 else:
-                    self.error_box.setText('Error: Invalid input')
-                    self.abmag.setChecked(True)                 
+                   self.statusBar.showMessage('Error: Not BINTABLE') 
             elif ext =='csv':
                 df = pd.read_csv(self.source_file)
                 df = df.dropna()
                 if self.check_df_params(df):
                     self.df = df
                 else:
-                    self.error_box.setText('Error: Invalid input')
-                    self.abmag.setChecked(True)       
-    
+                    self.statusBar.showMessage('Error: Invalid input')
+                    self.abmag.setChecked(True)  
+                    flag = False
+            else:
+                flag = False
+        else:
+            flag =False
+            self.statusBar.showMessage(f'Error: {self.source_file} not found')
+        if not flag:  
+            self.df = None
+            self.source_file = None
+        else:
+            self.check_df.setChecked(True)
+
     def upload_psf_btn(self):
         filters = "FITS (*.fits);;NPY (*.npy)"
         psf_file = QFileDialog.getOpenFileName(filter = filters)[0]
@@ -163,26 +197,31 @@ class Ui(QtWidgets.QMainWindow):
     def upload_coating_btn(self):
         filters = "DAT (*.dat)"
         coating_file = QFileDialog.getOpenFileName(filter = filters)[0]
-        self.coating_filename.setText(coating_file.split('/')[-1])
-        self.n_mirrors = self.mirrors.value()
-        self.coating_file = coating_file
-      
-            
+        if os.path.exists(coating_file):
+            self.coating_filename.setText(coating_file.split('/')[-1])
+            self.n_mirrors = self.mirrors.value()
+            self.coating_file = coating_file
+        else:
+            self.coating_file = None
+              
     def upload_filters_btn(self):
         filters = "DAT (*.dat)"
         filter_files = QFileDialog.getOpenFileNames(filter = filters)[0]
-        filter_names = [i.split('/')[-1] for i in filter_files]
+        filter_names = []
+        self.filter_files =[]
+        for file_ in filter_files:
+            if os.path.exists(file_) and self.check_dat_params(file_):
+                filter_names.append(file_.split('/')[-1])
+                self.filter_files.append(file_)
+                
         self.filter_filenames.setText(str(filter_names))
-        
-        self.filter_files = filter_files
+   
         
     def upload_QE_wav_btn(self):
         filters = "DAT (*.dat)"
         self.QE_file = QFileDialog.getOpenFileName(filter = filters)[0]
         self.QE_filename.setText(self.QE_file.split('/')[-1])
-  
         
-    
     def setdefault(self):
         self.response_funcs = []
         self.abmag.setText('20')
@@ -205,25 +244,26 @@ class Ui(QtWidgets.QMainWindow):
         self.shot_noise_type.setCurrentText('Gaussian')
         self.sky_shot_noise_type.setCurrentText('Gaussian')
         
-        self.qe_mean.setText(str(sim.params['qe']))
-        self.qe_sigma.setText(str(sim.params['qe_sigma']))
-        self.bias.setText(str(sim.params['bias']))
-        self.gain.setText(str(sim.params['G1']))
-        self.RN.setText(str(sim.params['RN']))
-        self.NF.setText(str(sim.params['NF']))
-        self.bit_res.setText(str(sim.params['bit_res']))
-        self.FWC.setText(str(sim.params['FWC']))
+        self.qe_mean.setText(str(sim.det_params['qe']))
+        self.qe_sigma.setText(str(sim.det_params['qe_sigma']))
+        self.bias.setText(str(sim.det_params['bias']))
+        self.gain.setText(str(sim.det_params['G1']))
+        self.RN.setText(str(sim.det_params['RN']))
+        self.NF.setText(str(sim.det_params['NF']))
+        self.bit_res.setText(str(sim.det_params['bit_res']))
+        self.FWC.setText(str(sim.det_params['FWC']))
      
         self.PRNU.setChecked(True)
-        self.PRNU_frac.setText(str(sim.params['PRNU_frac']))
+        self.PRNU_frac.setText(str(sim.det_params['PRNU_frac']))
         
         self.DC.setChecked(True)
         self.DNFP.setChecked(True)
-        self.det_T.setText(str(sim.params['T']))
-        self.DFM.setText(str(sim.params['DFM']))
-        self.pix_area.setText(str(sim.params['pixel_area']))
-        self.DN.setText(str(sim.params['DN']))
+        self.det_T.setText(str(sim.det_params['T']))
+        self.DFM.setText(str(sim.det_params['DFM']))
+        self.pix_area.setText(str(sim.det_params['pixel_area']))
+        self.DN.setText(str(sim.det_params['DN']))
         
+        self.aperture.setText(str(sim.tel_params['aperture']))
         coating = f'{data_path}/data/UV/Coating.dat'
         self.coating_file = coating
         self.coating_filename.setText(coating.split('/')[-1])
@@ -235,7 +275,6 @@ class Ui(QtWidgets.QMainWindow):
                    f'{data_path}/data/UV/Dichroic.dat',
                    f'{data_path}/data/UV/Dichroic.dat']
         
-        self.pixel_
         self.filter_files =  [f'{i},1' for i in filters]
         self.filter_filenames.setText(str([i.split('/')[-1] for i in filters]))
         self.pixel_scale.setText("0.1")
@@ -246,41 +285,23 @@ class Ui(QtWidgets.QMainWindow):
         self.QN.setChecked(True)
 
     def check_params(self):    
-        try:
-            if not os.path.exists(self.source_file):
-                self.source_file = None
-        except:
-            self.source_file = None
+        # Input
+         # Source File
+        if self.df is None or self.source_file is None: 
+            if self.check_df.isChecked():
+                self.statusBar.showMessage(f'Error: Valid DataFrame not uploaded')
+            self.check_abmag.setChecked(True) 
+        else:
+            self.source.setText(self.source_file.split('/')[-1])
             
-        if len(self.source.text())<1:
-            self.check_abmag.setChecked(True)
-
-        elif self.source_file is not None:
-            ext = self.source_file.split('.')[-1]
-            if ext =='fits' or ext =='fit':
-                tab = Table.read(self.source_file)
-                df  = tab.to_pandas()
-                if self.check_df_params(df):
-                    self.df = df
-                else:
-                    self.error_box.setText('Error: Invalid input')
-                    self.abmag.setChecked(True)
-                    
-            elif ext =='csv':
-                df = pd.read_csv(self.source_file)
-                if self.check_df_params(df):
-                    self.df = df
-                else:
-                    self.error_box.setText('Error: Invalid input')
-                    self.abmag.setChecked(True)
-    
-            
+          # AB Mag  
         if self.check_abmag.isChecked():
+            self.source.setText('')
             abmag = self.abmag.text()
             if len(abmag)>0 and self.check_input(abmag):
                 abmag = float(abmag)
             else : 
-                self.error_box.setText("Error: ABmag should be a real number."
+                self.statusBar.showMessage("Error: ABmag should be a real number."
                                         + " Default ABmag set")
                 abmag = 10
                 self.abmag.setText('10')
@@ -289,22 +310,28 @@ class Ui(QtWidgets.QMainWindow):
             mag = [abmag]
             self.df = pd.DataFrame(zip(ra,dec,mag), 
                                    columns = ['ra','dec','mag'])
-            
+         # Spectrum
+           #TBD
+         
+         # Stellar Models
+          #TBD
+         
+        # Exposure TIme
         exp_time = self.exp_time.text()
-        if len(exp_time)>0 and self.check_input(exp_time):
+        if self.check_input(exp_time):
             self.exp_time_value = float(exp_time)
             if self.exp_time_value<0:
-                self.error_box.setText("Error: Exposure should be a positive real number."
+                self.statusBar.showMessage("Error: Exposure should be a positive real number."
                                         + " Default Exposure time set")
                 self.exp_time.value = 60         
         else :
             self.exp_time.setText('60')
             self.exp_time_value = 60
-            self.error_box.setText("Error: Exposure should be a positive real number."
+            self.statusBar.showMessage("Error: Exposure should be a positive real number."
                                     + " Default Exposure time set")
-        
+        # Pixel Scale
         pixel_scale = self.pixel_scale.text()
-        if len(pixel_scale)> 0 and self.check_input(pixel_scale):
+        if self.check_input(pixel_scale):
             pixel_scale = abs(float(pixel_scale))
             self.ps_value = pixel_scale
         else:
@@ -312,6 +339,7 @@ class Ui(QtWidgets.QMainWindow):
             self.pixel_scale.setText('0.1')
             self.ps_value = pixel_scale
             
+        # PSF
         psf_filename = self.psf_filename.text()
         if self.psf_file is None or len(psf_filename)<1 :
             fwhm = self.fwhm.text()
@@ -324,7 +352,7 @@ class Ui(QtWidgets.QMainWindow):
                           
                 fwhm_in = fwhm/self.ps_value
                 sigma   = fwhm_in*gaussian_fwhm_to_sigma
-                
+                self.statusBar.showMessage('PSF Generated')
                 psf = generate_psf(1001,sigma)
                 np.save(f'{data_path}/data/user_defined_psf.npy', psf)
                 self.psf_file =f'{data_path}/data/user_defined_psf.npy'
@@ -355,7 +383,7 @@ class Ui(QtWidgets.QMainWindow):
             self.filter_files = filters
             self.response_funcs+= [f'{i},1' for i in filters]
             self.filter_filenames.setText(str([i.split('/')[-1] for i in filters]))
-        else:
+        elif self.filter_files is not None:
             for filt in self.filter_files:
                 if f'{filt},{1}' not in self.response_funcs:
                     if os.path.exists(filt):
@@ -557,15 +585,18 @@ class Ui(QtWidgets.QMainWindow):
                     self.params['pix_area'] = 1e-6
             
     def simulate_btn(self):
-        
-        self.params = {}
-        self.error_box.setText('')
-        self.check_params()
         self.statusBar.showMessage('Simulating Image')
-        sim = Analyzer(df = self.df, cols = {'mag_nuv' :'mag'}, psf_file = self.psf_file
-                       , exp_time = self.exp_time_value,n_pix= self.n_pix_value,
-                       response_funcs = self.response_funcs
-                       , pixel_scale = self.ps_value)
+        self.params = {}
+
+        self.check_params()
+        tel_params  = {'psf_file': self.psf_file,
+                     'response_funcs': self.response_funcs,
+                     'pixel_scale' : self.ps_value}
+        
+        sim = Analyzer(df = self.df, cols = {'mag_nuv' :'mag'},
+                       tel_params = tel_params, exp_time = self.exp_time_value
+                       ,n_pix= self.n_pix_value)
+        
         n = int(self.n_stack.value())
         stack_type = self.stack_type.currentText()
         
@@ -580,9 +611,10 @@ class Ui(QtWidgets.QMainWindow):
         if self.sky_shot_noise_type.currentText()=='None':
             sim.sky = False
 
-        sim(params = self.params,n_stack=n,stack_type=stack_type)
+        sim(det_params = self.params,n_stack=n,stack_type=stack_type)
         self.sim = sim
         self.make_plots()
+        self.statusBar.showMessage('Simulation Completed')
         
     def make_plots(self):
         
@@ -973,7 +1005,7 @@ class Ui(QtWidgets.QMainWindow):
    
             self.canvas_1d.draw_idle()
         else:
-            self.error_box.setText("Error: Image not generated. Click Simulate First!")
+            self.statusBar.showMessage("Error: Image not generated. Click Simulate First!")
          
     def download_img(self):
         source = self.output_select.currentText()

@@ -8,17 +8,12 @@ from .simulation import *
 data_path = Path(__file__).parent.joinpath()
 
 class Analyzer(Imager):
-  def __init__(self, df = None, cols = None,
-               psf_file = f'{data_path}/data/off_axis_hcipy.npy',
-               exp_time = 100,n_pix = 2000, response_funcs = None
-               ,pixel_scale = 0.1):
+  def __init__(self, df = None, cols = None,tel_params=None,exp_time = 100,
+               n_pix = 1000, **kwargs):
       
-      super().__init__(df=df, cols=cols, exp_time = exp_time,
-                       psf_file = psf_file, n_pix = n_pix, 
-                       response_funcs = response_funcs
-                       , pixel_scale = pixel_scale)
+      super().__init__(df=df, cols=cols, exp_time = exp_time, n_pix = n_pix, 
+                       tel_params=tel_params, **kwargs)
       """
-      
       A class to visualize and analyze the simulated image
       
       Parameters
@@ -47,9 +42,10 @@ class Analyzer(Imager):
       None.
 
       """
-
-  def __call__(self,params= None, n_stack =1, stack_type ='median', do_photometry =True):
-    super().__call__(params = params, n_stack = n_stack, stack_type = stack_type)
+  def __call__(self,det_params= None, n_stack =1, stack_type ='median', 
+               do_photometry =True):
+    super().__call__(det_params = det_params, n_stack = n_stack, 
+                     stack_type = stack_type)
     """
     
     Performs PSF simulation and PSF Photometry
@@ -60,7 +56,6 @@ class Analyzer(Imager):
     if do_photometry and len(self.df)>1:
       self.data_jy, self.phot_table = self.photometry(self.digital.astype(float),
                                                    self.wcs,self.df)
-
   def photometry(self,data,wcs,df):
 
       c          = SkyCoord(df['ra'], df['dec'],unit=u.deg)
@@ -85,10 +80,12 @@ class Analyzer(Imager):
       if len(phot_table)>3:
           zero_p_flux = 0
           for i in range(3):
-            zero_p_flux += phot_table['flux'].value[i]/pow(10,-0.4*phot_table['mag_in'].value[i])
+            zero_p_flux += phot_table['flux'].value[i]/pow(10,
+                                         -0.4*phot_table['mag_in'].value[i])
           zero_p_flux/=3
       elif len(phot_table)==1:
-          zero_p_flux = phot_table['flux'].value[0]/pow(10,-0.4*phot_table['mag_in'].value[0])
+          zero_p_flux = phot_table['flux'].value[0]/pow(10,
+                                        -0.4*phot_table['mag_in'].value[0])
         
       data_jy= data*(3631/zero_p_flux)
       

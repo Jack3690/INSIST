@@ -13,12 +13,6 @@
     <height>657</height>
    </rect>
   </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-    <horstretch>1</horstretch>
-    <verstretch>1</verstretch>
-   </sizepolicy>
-  </property>
   <property name="minimumSize">
    <size>
     <width>5</width>
@@ -36,7 +30,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>../../../../../../INSIST/pista/pista/data/icon.png</normaloff>../../../../../../INSIST/pista/pista/data/icon.png</iconset>
+    <normaloff>../../../../../../Anaconda/Books n All/Astro_IIA/INSIST/pista/pista/data/icon.png</normaloff>../../../../../../Anaconda/Books n All/Astro_IIA/INSIST/pista/pista/data/icon.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="sizePolicy">
@@ -64,7 +58,7 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-51</y>
+         <y>0</y>
          <width>1376</width>
          <height>668</height>
         </rect>
@@ -306,6 +300,9 @@
                    </item>
                    <item>
                     <widget class="QLineEdit" name="source">
+                     <property name="enabled">
+                      <bool>true</bool>
+                     </property>
                      <property name="toolTip">
                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;CSV for dataframe.&lt;br/&gt;CSV file format&lt;br/&gt;ra : degrees&lt;br/&gt;dec: degrees&lt;br/&gt;mag : ABmag&lt;br/&gt;&lt;br/&gt;DAT for spectra.&lt;br/&gt;DAT file format&lt;br/&gt;0 : Wavelength in Angstrom&lt;br/&gt;1 : Response function&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
@@ -883,6 +880,23 @@
                       <string>?</string>
                      </property>
                     </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_22">
+                   <property name="spacing">
+                    <number>33</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="label_43">
+                     <property name="text">
+                      <string>Aperture</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="aperture"/>
                    </item>
                   </layout>
                  </item>
@@ -1620,35 +1634,15 @@
                <property name="frameShadow">
                 <enum>QFrame::Raised</enum>
                </property>
-               <widget class="QWidget" name="horizontalLayoutWidget_2">
-                <property name="geometry">
-                 <rect>
-                  <x>10</x>
-                  <y>10</y>
-                  <width>481</width>
-                  <height>311</height>
-                 </rect>
-                </property>
-                <layout class="QHBoxLayout" name="panel_box">
-                 <property name="spacing">
-                  <number>0</number>
-                 </property>
-                </layout>
-               </widget>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="error_box">
-               <property name="styleSheet">
-                <string notr="true">color:rgb(255, 0, 0)</string>
-               </property>
-               <property name="text">
-                <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
+               <layout class="QGridLayout" name="gridLayout_14">
+                <item row="0" column="0">
+                 <layout class="QHBoxLayout" name="panel_box">
+                  <property name="spacing">
+                   <number>0</number>
+                  </property>
+                 </layout>
+                </item>
+               </layout>
               </widget>
              </item>
              <item>
@@ -1669,247 +1663,138 @@ p, li { white-space: pre-wrap; }
                 <attribute name="title">
                  <string>Histogram</string>
                 </attribute>
-                <widget class="QWidget" name="horizontalLayoutWidget_4">
-                 <property name="geometry">
-                  <rect>
-                   <x>10</x>
-                   <y>10</y>
-                   <width>481</width>
-                   <height>241</height>
-                  </rect>
-                 </property>
-                 <layout class="QHBoxLayout" name="output_hist">
-                  <property name="spacing">
-                   <number>0</number>
-                  </property>
-                 </layout>
-                </widget>
+                <layout class="QGridLayout" name="gridLayout_9">
+                 <item row="0" column="0">
+                  <layout class="QHBoxLayout" name="output_hist">
+                   <property name="spacing">
+                    <number>0</number>
+                   </property>
+                  </layout>
+                 </item>
+                </layout>
                </widget>
                <widget class="QWidget" name="tab_2">
                 <attribute name="title">
                  <string>1D Slice</string>
                 </attribute>
-                <widget class="QWidget" name="horizontalLayoutWidget_3">
-                 <property name="geometry">
-                  <rect>
-                   <x>150</x>
-                   <y>10</y>
-                   <width>341</width>
-                   <height>231</height>
-                  </rect>
-                 </property>
-                 <layout class="QHBoxLayout" name="slice_1d"/>
-                </widget>
-                <widget class="QFrame" name="frame_4">
-                 <property name="enabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="geometry">
-                  <rect>
-                   <x>10</x>
-                   <y>10</y>
-                   <width>131</width>
-                   <height>29</height>
-                  </rect>
-                 </property>
-                 <property name="frameShape">
-                  <enum>QFrame::WinPanel</enum>
-                 </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Raised</enum>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_14">
-                  <property name="spacing">
-                   <number>2</number>
-                  </property>
-                  <property name="leftMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>2</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>2</number>
-                  </property>
-                  <property name="bottomMargin">
-                   <number>2</number>
-                  </property>
-                  <item>
-                   <widget class="QLabel" name="label_12">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>10</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="text">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;x&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="x_c">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-                <widget class="QFrame" name="frame_5">
-                 <property name="enabled">
-                  <bool>true</bool>
-                 </property>
-                 <property name="geometry">
-                  <rect>
-                   <x>10</x>
-                   <y>49</y>
-                   <width>131</width>
-                   <height>29</height>
-                  </rect>
-                 </property>
-                 <property name="frameShape">
-                  <enum>QFrame::WinPanel</enum>
-                 </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Raised</enum>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_16">
-                  <property name="spacing">
-                   <number>2</number>
-                  </property>
-                  <property name="leftMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>2</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>2</number>
-                  </property>
-                  <property name="bottomMargin">
-                   <number>2</number>
-                  </property>
-                  <item>
-                   <widget class="QLabel" name="label_35">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>10</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="text">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;y&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLineEdit" name="y_c">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-                <widget class="QPushButton" name="generate">
-                 <property name="geometry">
-                  <rect>
-                   <x>30</x>
-                   <y>164</y>
-                   <width>81</width>
-                   <height>23</height>
-                  </rect>
-                 </property>
-                 <property name="text">
-                  <string>Generate</string>
-                 </property>
-                </widget>
-                <widget class="QWidget" name="layoutWidget_2">
-                 <property name="geometry">
-                  <rect>
-                   <x>10</x>
-                   <y>93</y>
-                   <width>131</width>
-                   <height>22</height>
-                  </rect>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_15">
-                  <item>
-                   <widget class="QLabel" name="label_41">
-                    <property name="text">
-                     <string>Direction</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QComboBox" name="direction">
-                    <item>
+                <layout class="QGridLayout" name="gridLayout_12">
+                 <item row="0" column="0">
+                  <layout class="QVBoxLayout" name="verticalLayout_2">
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_16">
+                     <item>
+                      <widget class="QLabel" name="label_12">
+                       <property name="text">
+                        <string>x</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="x_c"/>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_21">
+                     <item>
+                      <widget class="QLabel" name="label_35">
+                       <property name="text">
+                        <string>y</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="y_c"/>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_15">
+                     <item>
+                      <widget class="QLabel" name="label_41">
+                       <property name="text">
+                        <string>Direction</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="direction">
+                       <item>
+                        <property name="text">
+                         <string>Horizontal</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Vertical</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_13">
+                     <item>
+                      <widget class="QLabel" name="label_40">
+                       <property name="text">
+                        <string>Scale</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="scale">
+                       <item>
+                        <property name="text">
+                         <string>Linear</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Log</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="generate">
                      <property name="text">
-                      <string>Horizontal</string>
+                      <string>Generate</string>
                      </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QFrame" name="frame_2">
+                   <property name="minimumSize">
+                    <size>
+                     <width>351</width>
+                     <height>231</height>
+                    </size>
+                   </property>
+                   <property name="frameShape">
+                    <enum>QFrame::StyledPanel</enum>
+                   </property>
+                   <property name="frameShadow">
+                    <enum>QFrame::Raised</enum>
+                   </property>
+                   <layout class="QGridLayout" name="gridLayout_13">
+                    <item row="0" column="0">
+                     <layout class="QHBoxLayout" name="slice_1d"/>
                     </item>
-                    <item>
-                     <property name="text">
-                      <string>Vertical</string>
-                     </property>
-                    </item>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-                <widget class="QWidget" name="layoutWidget">
-                 <property name="geometry">
-                  <rect>
-                   <x>10</x>
-                   <y>130</y>
-                   <width>131</width>
-                   <height>22</height>
-                  </rect>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_13">
-                  <item>
-                   <widget class="QLabel" name="label_40">
-                    <property name="text">
-                     <string>Scale</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QComboBox" name="scale">
-                    <item>
-                     <property name="text">
-                      <string>Linear</string>
-                     </property>
-                    </item>
-                    <item>
-                     <property name="text">
-                      <string>Log</string>
-                     </property>
-                    </item>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
+                   </layout>
+                  </widget>
+                 </item>
+                </layout>
                </widget>
               </widget>
              </item>
             </layout>
            </item>
           </layout>
-          <zorder>layoutWidget</zorder>
-          <zorder>frame_3</zorder>
-          <zorder>output_image</zorder>
-          <zorder>layoutWidget</zorder>
-          <zorder>layoutWidget</zorder>
-          <zorder>error_box</zorder>
-          <zorder>tabWidget</zorder>
          </widget>
         </item>
        </layout>

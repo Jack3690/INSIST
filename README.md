@@ -12,8 +12,6 @@ A python package aimed at simulating astronomical images. The routine simulates 
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/pista_flow.png?raw=True) 
 
 ### Installation
-Clone the repository.
-Open terminal and go to directory pista
 ```
 pip install insist-pista
 ```

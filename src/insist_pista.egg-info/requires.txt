@@ -1,0 +1,8 @@
+pandas
+matplotlib
+astropy
+photutils
+numpy
+seaborn
+scipy
+pyqt5

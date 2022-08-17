@@ -226,7 +226,7 @@ class Ui(QtWidgets.QMainWindow):
         self.response_funcs = []
         self.abmag.setText('20')
         self.n_pix.setText("1000")
-        psf_file = f'{data_path}/data/off_axis_hcipy.npy'
+        psf_file = f'{data_path}/data/PSF/INSIST/off_axis_hcipy.npy'
         self.psf_file = psf_file
 
         self.psf_filename.setText(psf_file.split('/')[-1])
@@ -271,14 +271,14 @@ class Ui(QtWidgets.QMainWindow):
         self.n_mirrors = 5
         self.n_stack.setValue(1)
         self.stack_type.setCurrentText('Mean')
-        filters = [f'{data_path}/data/UV/Filter.dat', 
-                   f'{data_path}/data/UV/Dichroic.dat',
-                   f'{data_path}/data/UV/Dichroic.dat']
+        filters = [f'{data_path}/data/INSIST/UV/Filter.dat', 
+                   f'{data_path}/data/INSIST/UV/Dichroic.dat',
+                   f'{data_path}/data/INSIST/UV/Dichroic.dat']
         
         self.filter_files =  [f'{i},1' for i in filters]
         self.filter_filenames.setText(str([i.split('/')[-1] for i in filters]))
         self.pixel_scale.setText("0.1")
-        self.QE_file = f'{data_path}/data/QE.dat'
+        self.QE_file = f'{data_path}/data/INSIST/QE.dat'
         self.QE_filename.setText(self.QE_file.split('/')[-1])   
         self.cosmic_rays.setChecked(True)
         self.QE.setChecked(True)
@@ -358,13 +358,13 @@ class Ui(QtWidgets.QMainWindow):
                 self.psf_file =f'{data_path}/data/user_defined_psf.npy'
                 self.psf_filename.setText(self.psf_file.split('/')[-1])
             else:
-                self.psf_file = f'{data_path}/data/off_axis_hcipy.npy'
+                self.psf_file = f'{data_path}/data/PSF/INSIST/off_axis_hcipy.npy'
                 self.psf_filename.setText(self.psf_file.split('/')[-1])
            
         self.response_funcs= []
         # Coating
         if len(self.coating_filename.text())<1:
-            coating = f'{data_path}/data/UV/Coating.dat'
+            coating = f'{data_path}/data/INSIST/Coating.dat'
             self.coating_file = coating
             self.coating_filename.setText(coating.split('/')[-1])
             self.mirrors.setValue(5)
@@ -377,9 +377,9 @@ class Ui(QtWidgets.QMainWindow):
             
         # Filters
         if len(self.filter_filenames.text() )<1:
-            filters = [f'{data_path}/data/UV/Filter.dat', 
-                       f'{data_path}/data/UV/Dichroic.dat',
-                       f'{data_path}/data/UV/Dichroic.dat']
+            filters = [f'{data_path}/data/INSIST/UV/Filter.dat', 
+                       f'{data_path}/data/INSIST/UV/Dichroic.dat',
+                       f'{data_path}/data/INSIST/UV/Dichroic.dat']
             self.filter_files = filters
             self.response_funcs+= [f'{i},1' for i in filters]
             self.filter_filenames.setText(str([i.split('/')[-1] for i in filters]))
@@ -391,7 +391,7 @@ class Ui(QtWidgets.QMainWindow):
         # QE
         if self.QE.isChecked():
             if len(self.QE_filename.text())<1:
-                self.QE_file = f'{data_path}/data/QE.dat'
+                self.QE_file = f'{data_path}/data/INSIST/QE.dat'
                 self.QE_filename.setText('QE.dat')
                 self.response_funcs.append(f'{self.QE_file},1')
             else:
@@ -585,10 +585,14 @@ class Ui(QtWidgets.QMainWindow):
                     self.params['pix_area'] = 1e-6
             
     def simulate_btn(self):
-        self.statusBar.showMessage('Simulating Image')
+        
         self.params = {}
-
         self.check_params()
+        self.statusBar.showMessage('Simulating Image',10000)
+        self.sim = self.run_sim()
+        self.make_plots()
+        
+    def run_sim(self):
         tel_params  = {'psf_file': self.psf_file,
                      'response_funcs': self.response_funcs,
                      'pixel_scale' : self.ps_value}
@@ -612,10 +616,8 @@ class Ui(QtWidgets.QMainWindow):
             sim.sky = False
 
         sim(det_params = self.params,n_stack=n,stack_type=stack_type)
-        self.sim = sim
-        self.make_plots()
         self.statusBar.showMessage('Simulation Completed')
-        
+        return sim
     def make_plots(self):
         
         plt.ioff()

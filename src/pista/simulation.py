@@ -52,7 +52,7 @@ class Imager():
     # Parameters
     self.tel_params = {'aperture'   : 100, # cm
                        'pixel_scale': 0.1,
-                       'psf_file'   :f'{data_path}/data/off_axis_hcipy.npy',
+                       'psf_file'   :f'{data_path}/data/PSF/INSIST/off_axis_hcipy.npy',
                        'response_funcs' : [],
                        'coeffs'         : 1
                        }

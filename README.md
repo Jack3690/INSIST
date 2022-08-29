@@ -36,7 +36,7 @@ The package includes a GUI designed using PyQT5.
 
 ## [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynb)
 
-This notebook contains python routines which expands on the low-level framework of PISTA package. Notebook contains few examples on how to run use the package and how to export it.
+This notebook contains python routines which expands on the low-level framework of PISTA package. Notebook also contains few examples on how to run the package and what type of outputs can be generated.
 
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/psf_sim.png?raw=True) 
 

@@ -26,14 +26,19 @@ The package includes a GUI designed using PyQT5.
  
 ## Notebooks
 
+* PISTA                        : [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynbb)
 * PSF Simulator                : [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb)
 * PSF Analysis                 : [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb)
-* INSIST PSF Tool              : [INSIST_PSF_Tool.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynbb)
 * UV Stellar Catalog Generator : [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/UV_Stellar_Catalog.ipynb)
 * Exposure Time Calculator     : [Exposure_Time_Calculator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator)
 
-
 # Usage
+
+## [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynb)
+
+This notebook contains python routines which expands on the low-level framework of PISTA package. Notebook contains few examples on how to run use the package and how to export it.
+
+![](https://github.com/Jack3690/INSIST/blob/main/doc/psf_sim.png?raw=True) 
 
 ## [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb)
 
@@ -55,11 +60,6 @@ In this section we explore how to use a catalog which is either directly acquire
 This notebook contains Python routines used for comparing off axis and on axis PSFs generated using Zemax and HCIPy. The aim is to quantitatively study how presence of an on-axis secondary modifies the PSF, and how it would affect the expected science cases.
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/off_axis_vs_on_axis.png?raw=True) 
 
-## [INSIST_PSF_Tool.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/INSIST_PSF_Tool.ipynb)
-
-This notebook contains python routines which modularizes image simulation and testing codes presented in PSF_Simulation and PSF_Analysis. The aim is to convert the routines into a python package (PISTA). This notebook show how individual modules  can be tested before integrating into a package.
-
-![](https://github.com/Jack3690/INSIST/blob/main/doc/psf_sim.png?raw=True) 
 
 ## [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/UV_Stellar_Catalog.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/UV_Stellar_Catalog.ipynb)
 

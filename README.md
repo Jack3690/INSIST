@@ -76,14 +76,13 @@ This notebook contains routines which allows users to calculate exposure time fo
 
 # Conclusion/Disclaimer
 
-If you have any questions or suggestions for improvements to this repo,
-please contact the owners of the repository.
-
 Please add the following acknowledgement if you use our package in your work.
 
 "This work has made use of Python Image Simulation and Testing Application (PISTA) developed as part of the INdian Spectroscopic and Imaging Space Telescope (INSIST) project."
 
-This is not an official product.
+If you have any questions or suggestions for improvements to this repo,
+please contact the owners of the repository.
+
 
 ## References
 * https://docs.hcipy.org/stable/

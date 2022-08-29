@@ -76,7 +76,7 @@ This notebook contains routines which allows users to calculate exposure time fo
 
 # Conclusion/Disclaimer
 
-Please add the following acknowledgement if you use our package in your work.
+Please add the following acknowledgment if you use our package in your work.
 
 "This work has made use of Python Image Simulation and Testing Application (PISTA) developed as part of the INdian Spectroscopic and Imaging Space Telescope (INSIST) project."
 

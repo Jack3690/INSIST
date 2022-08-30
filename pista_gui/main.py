@@ -70,6 +70,8 @@ class Ui(QtWidgets.QMainWindow):
         self.generate.clicked.connect(self.generate_1d)
         self.download_image.clicked.connect(self.download_img)
         
+        self.cosmic_rays.setChecked(False)
+        
     def __del__(self):
         plt.close()
     
@@ -244,7 +246,7 @@ class Ui(QtWidgets.QMainWindow):
         self.shot_noise_type.setCurrentText('Gaussian')
         self.sky_shot_noise_type.setCurrentText('Gaussian')
         
-        self.qe_mean.setText(str(sim.det_params['qe']))
+        self.qe_mean.setText('0')
         self.qe_sigma.setText(str(sim.det_params['qe_sigma']))
         self.bias.setText(str(sim.det_params['bias']))
         self.gain.setText(str(sim.det_params['G1']))
@@ -280,8 +282,7 @@ class Ui(QtWidgets.QMainWindow):
         self.pixel_scale.setText("0.1")
         self.QE_file = f'{data_path}/data/INSIST/QE.dat'
         self.QE_filename.setText(self.QE_file.split('/')[-1])   
-        self.cosmic_rays.setChecked(True)
-        self.QE.setChecked(True)
+        self.cosmic_rays.setChecked(False)
         self.QN.setChecked(True)
 
     def check_params(self):    

@@ -8,34 +8,17 @@ from .simulation import *
 data_path = Path(__file__).parent.joinpath()
 
 class Analyzer(Imager):
-  def __init__(self, df = None, cols = None,tel_params=None,exp_time = 100,
-               n_pix = 1000, **kwargs):
+  def __init__(self, df = None, coords = None,tel_params=None,exp_time = 100,
+               n_x = 1000, n_y = 1000, **kwargs):
       
-      super().__init__(df=df, cols=cols, exp_time = exp_time, n_pix = n_pix, 
-                       tel_params=tel_params, **kwargs)
+      super().__init__(df=df, coords=coords, exp_time = exp_time, n_x = n_x,
+                       n_y = n_y, tel_params=tel_params, **kwargs)
       """
       A class to visualize and analyze the simulated image
       
       Parameters
       ----------
-      name  : str, Catalog name or coordinates of the source
-
-      df   : pd.DataFrame, Pandas dataframe with source catalog
-
-      cols  :,dict dict object with column name conversions for ra,dec,mag_nuv. 
-      Eg {'RA': 'ra','Dec' : 'dec', 'ABmag' : 'mag_nuv'}
-
-        'ra' (degrees)
-
-        'dec' (degrees)
-
-        'mag_nuv' (ABmag)
-      axis     : str, 'Off' or "On", Secondary of the telescope.
-      mode     : str, 'HCIPy' or 'Zemax', PSF patch generation method
-      exp_time : float, Exposure time in seconds 
-      fov      : float, Field of View in degrees
-      
-     
+      Imager.init() 
 
       Returns
       -------
@@ -48,9 +31,12 @@ class Analyzer(Imager):
                      stack_type = stack_type)
     """
     
-    Performs PSF simulation and PSF Photometry
+    Performs sim simulation and sim Photometry
     
-    TBW
+    Imager.call()
+
+    do_photometry : Bool, Default : True
+                    Do Aperture Photometry 
     """
     
     if do_photometry and len(self.df)>1:
@@ -67,7 +53,7 @@ class Analyzer(Imager):
       ap_pix     = np.count_nonzero(self.aps.to_mask()[0])
       self.bags  = aper.CircularAnnulus(position, r_in = 0.6/0.1, r_out = 1/0.1)
       bag_pix    = np.count_nonzero(self.bags.to_mask()[0])
-
+     
       phot_table      = aperture_photometry(data, [self.aps, self.bags])
 
       phot_table['sky_flux'] = phot_table['aperture_sum_1']*(ap_pix/bag_pix)
@@ -78,14 +64,21 @@ class Analyzer(Imager):
       phot_table['mag_in']   = df['mag'].values
       
       if len(phot_table)>3:
+      
+        zero_p_flux = 0
+        for i in range(3):
+          zero_p_flux += phot_table['flux'].value[i]/pow(10,
+                                        -0.4*phot_table['mag_in'].value[i])
+        zero_p_flux/=3
+        print('Estimated Zero point using 3 stars')
+      elif len(phot_table)>0:
           zero_p_flux = 0
-          for i in range(3):
+          for i in range(len(phot_table)):
             zero_p_flux += phot_table['flux'].value[i]/pow(10,
                                          -0.4*phot_table['mag_in'].value[i])
-          zero_p_flux/=3
-      elif len(phot_table)==1:
-          zero_p_flux = phot_table['flux'].value[0]/pow(10,
-                                        -0.4*phot_table['mag_in'].value[0])
+            zero_p_flux/=len(phot_table)
+      else:
+        zero_p_flux = self.zero_flux*self.exp_time
         
       data_jy= data*(3631/zero_p_flux)
       
@@ -102,6 +95,11 @@ class Analyzer(Imager):
   def show_field(self,figsize=(10,10)):
     """
     Function for creating a scatter plot of sources within the FoV
+    
+    Parameters
+    ----------
+    figsize : tuple,
+              Figure size
 
     Returns
     -------
@@ -110,11 +108,29 @@ class Analyzer(Imager):
     if self.wcs is None :
       self.init_image_array()
 
+    # Cropping data frame to show source within n_x x n_y
+    
+    fov_x   = (self.n_x*self.pixel_scale)/3600 # Degrees 
+    fov_y   = (self.n_y*self.pixel_scale)/3600 # Degrees 
+
+    height  = fov_x/2
+    width   = fov_y/2  
+    
+    ra_min  = (self.df['ra']>=self.ra - height) 
+    ra_max  = (self.df['ra']<=self.ra + height)
+    df = self.df[ ra_min & ra_max ]
+
+    dec_min = (df['dec']>=self.dec - width)
+    dec_max = (df['dec']<=self.dec + width)
+    df      = df[ dec_min & dec_max ]
+
+    fov_x  = np.round(fov_x, 3)
+    fov_y  = np.round(fov_y, 3)
+
     fig, ax = plt.subplots(1,1,figsize=figsize)
-    ax.scatter(self.df['ra'],self.df['dec'],marker='.',color='black')
-    ax.set_title(f"""Requested Center : {self.name} \n FoV :
-                 {np.round(self.pixel_scale*(self.n_pix_main-2*self.n_pix_sub )
-                           /3600,3)} degrees | {len(self.df)} sources""")
+    ax.scatter(df['ra'],df['dec'],marker='.',color='black')
+    ax.set_title(f"""Requested Center : {self.name} | {len(df)} sources
+    Fov(RA) : {fov_x} | Fov(Dec) : {fov_y} """)
     ax.invert_xaxis()
     ax.set_xlabel('RA (Degrees)')
     ax.set_ylabel('Dec (Degrees)')
@@ -123,10 +139,36 @@ class Analyzer(Imager):
   def show_image(self, source = 'Digital', fig = None, ax = None,cmap = 'jet', 
                  figsize = (15,10), download = False, show_wcs = True):
     """
-    Function for plotting the simulated field with PSFs
+    Function for plotting the simulated field image
 
+    Source: str,
+            Choose from
+                         'Digital' : Final digial image
+                         'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                         'Source'  : Source + Sky + Noises
+                         'Sky'     : Sky + shot_noise
+                         'DC'      : Dark Current + DNFP
+                         'QE'      : Quantum efficiency fluctuation across detector
+                         'Bias'    : Charge offset
+                         'PRNU'    : Photon Response Non-Uniformity
+                         'DNFP'    : Dark Noise Fixed Pattern
+                         'QN'      : Quantization Noise
+
+
+    fig : matplotlib.pyplot.figure
+          User defined figure
+    ax  : matplotlib.pyplot.axes
+          User defined axes
+    cmap : str,
+           matplotlib.pyplot colormap
+    figsize : tuple
+    download : bool
+    show_wcs : bool
+               If true adds WCS projection to the image
     Returns
     -------
+    Image
+
     fig, ax
     """
     if np.all(self.image) !=None :
@@ -139,6 +181,9 @@ class Analyzer(Imager):
           norm = col.LogNorm()
         elif source =='Charge':
           data  = self.charge
+          norm = col.LogNorm()
+        elif source =='Source':
+          data  = self.light_array
           norm = col.LogNorm()
         elif source == 'Sky':
           data = self.sky_photoelec
@@ -155,6 +200,9 @@ class Analyzer(Imager):
           data = self.DNFP_array
         elif source == 'QN':
           data = self.QN_array
+        else:
+          print("Invalid Input")
+          return None
     
         if show_wcs:
             ax = fig.add_subplot(projection=self.wcs)
@@ -172,9 +220,35 @@ class Analyzer(Imager):
     else:
         print("Run Simulation")
         
-
   def show_hist(self, source = 'Digital',bins = None,
                  fig = None, ax = None,figsize=(15,8)):
+    """
+    Function for plotting histogram of various stages of simulation
+
+    Parameters
+    ----------
+
+    Source: str,
+            Choose from
+                      'Digital' : Final digial image
+                      'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                      'Source'  : Source + Sky + Noises
+                      'Sky'     : Sky + shot_noise
+                      'DC'      : Dark Current + DNFP
+                      'QE'      : Quantum efficiency fluctuation across detector
+                      'Bias'    : Charge offset
+                      'PRNU'    : Photon Response Non-Uniformity
+                      'DNFP'    : Dark Noise Fixed Pattern
+                      'QN'      : Quantization Noise
+
+    bins : numpy.array,
+           bins for making histogram
+    fig : matplotlib.pyplot.figure
+          User defined figure
+    ax  : matplotlib.pyplot.axes
+          User defined axes
+    figsize : tuple
+    """
    
     if np.all(self.image) !=None :
         if fig is None or ax is None: 
@@ -185,6 +259,8 @@ class Analyzer(Imager):
         elif source =='Charge':
           data  = self.charge.ravel()
           norm = col.LogNorm()
+        elif source =='Source':
+          data  = self.light_array
         elif source == 'Sky':
           data = self.sky_photoelec.ravel()
         elif source == 'DC':
@@ -211,6 +287,25 @@ class Analyzer(Imager):
         print("Run Simulation")
 
   def getImage(self,source = 'Digital'):
+    """
+    Function of retrieving image array at different stages of simulation.
+
+    Parameters
+    ----------
+
+    Source: str,
+        Choose from
+                      'Digital' : Final digial image
+                      'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                      'Source'  : Source + Sky + Noises
+                      'Sky'     : Sky + shot_noise
+                      'DC'      : Dark Current + DNFP
+                      'QE'      : Quantum efficiency fluctuation across detector
+                      'Bias'    : Charge offset
+                      'PRNU'    : Photon Response Non-Uniformity
+                      'DNFP'    : Dark Noise Fixed Pattern
+                      'QN'      : Quantization Noise
+    """
       
     if np.all(self.image) !=None :
         if source == 'Digital':
@@ -238,8 +333,30 @@ class Analyzer(Imager):
       print("Run Simulation")
 
   def writeto(self,name,source = 'Digital', user_source = None):
+
     """
-    Function for downloading a fits file of simulated field
+    Function for downloading a fits file of simulated field image
+
+    Parameters
+    ----------
+    name : str
+           filename, Example : simulation.fits
+
+    Source: str,
+        Choose from
+                      'Digital' : Final digial image
+                      'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                      'Source'  : Source + Sky + Noises
+                      'Sky'     : Sky + shot_noise
+                      'DC'      : Dark Current + DNFP
+                      'QE'      : Quantum efficiency fluctuation across detector
+                      'Bias'    : Charge offset
+                      'PRNU'    : Photon Response Non-Uniformity
+                      'DNFP'    : Dark Noise Fixed Pattern
+                      'QN'      : Quantization Noise
+
+    user_source : numpy.ndarray
+                  2D numpy array user wants to save as FITS
     """
     if np.all(self.image) !=None :
       if user_source is not None and type(user_source)==np.ndarray:
@@ -250,6 +367,8 @@ class Analyzer(Imager):
       elif source =='Charge':
         data  = self.charge
         norm = col.LogNorm()
+      elif source =='Source':
+          data  = self.light_array
       elif source == 'Sky':
         data = self.sky_photoelec
       elif source == 'DC':

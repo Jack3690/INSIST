@@ -20,6 +20,7 @@ The package includes a GUI designed using PyQT5.
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/PISTA.png?raw=True) 
 
 # Web Tools
+* PISTA Webtool                 : [Streamlit](https://jack3690-insist-webtools-pista-webtool-d79yxm.streamlitapp.com/)
 * PSF Simulation Tool           : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FPSF_Simulator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
 * Exposure Time Calculator Tool : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FExposure_Time_Calculator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
 

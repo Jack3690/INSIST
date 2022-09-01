@@ -42,7 +42,7 @@ This notebook provides step by step instructions on how to use PISTA package for
 
 ## [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb)
 
-![](https://github.com/Jack3690/INSIST/blob/main/doc/sim.png?raw=True) 
+![](https://github.com/Jack3690/INSIST/blob/main/doc/psf_sim.png?raw=True) 
 This notebook  expands on the low-level framework of PISTA package. 
 
 ## [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb)

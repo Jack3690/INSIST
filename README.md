@@ -27,7 +27,8 @@ The package includes a GUI designed using PyQT5.
  
 ## Notebooks
 
-* PISTA                        : [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynbb)
+* Image Simulation             : [image_simulation.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/image_simulation.ipynb)
+* PISTA                        : [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb)
 * PSF Simulator                : [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb)
 * PSF Analysis                 : [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb)
 * UV Stellar Catalog Generator : [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/UV_Stellar_Catalog.ipynb)
@@ -35,11 +36,13 @@ The package includes a GUI designed using PyQT5.
 
 # Usage
 
+## [image_simulation.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/image_simulation.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/image_simulation.ipynb)
+
+This notebook provides step by step instructions on how to use PISTA package for resolved stellar population simulation.
+
 ## [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb)
 
-This notebook contains python routines which expands on the low-level framework of PISTA package. Notebook also contains few examples on how to run the package and what type of outputs can be generated.
-
-![](https://github.com/Jack3690/INSIST/blob/main/doc/psf_sim.png?raw=True) 
+This notebook  expands on the low-level framework of PISTA package. 
 
 ## [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb)
 

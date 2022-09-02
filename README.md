@@ -27,7 +27,7 @@ The package includes a GUI designed using PyQT5.
  
 ## Notebooks
 
-* Image Simulation             : [image_simulation.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/image_simulation.ipynb)
+* Image Simulation             : [Image_Simulation.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/Image_Simulation.ipynb)
 * PISTA                        : [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb)
 * PSF Simulator                : [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb)
 * PSF Analysis                 : [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb)
@@ -36,7 +36,7 @@ The package includes a GUI designed using PyQT5.
 
 # Usage
 
-## [image_simulation.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/image_simulation.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/image_simulation.ipynb)
+## [Image_Simulation.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/Image_Simulation.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/Image_Simulation.ipynb)
 
 This notebook provides step by step instructions on how to use PISTA package for resolved stellar population simulation.
 

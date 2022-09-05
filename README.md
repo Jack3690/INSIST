@@ -9,7 +9,7 @@ This is a repository dedicated to data simulations for the Indian Spectroscopic 
 # Packages
 ## PISTA : Python Image Simulation and Testing Application
 A python package aimed at simulating astronomical images. The routine simulates individual stars and adds different noises. The input parameter space is designed to inculcate observational parameters, telescope parameters and detector characteristics.
-![](https://github.com/Jack3690/INSIST/blob/main/doc/pista_flow.png?raw=True) 
+
 
 ### Installation
 ```
@@ -42,7 +42,7 @@ This notebook provides step by step instructions on how to use PISTA package for
 
 ## [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb)
 
-![](https://github.com/Jack3690/INSIST/blob/main/doc/psf_sim.png?raw=True) 
+![](https://github.com/Jack3690/INSIST/blob/main/doc/pista_flow.png?raw=True) 
 This notebook  expands on the low-level framework of PISTA package. 
 
 ## [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb)
@@ -55,10 +55,10 @@ In this section we use Astropy to generate Gaussian and Airy disk PSFs based on 
 
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/SPG.png?raw=True) 
 
-## Image Generation using Source Catalog
+## PSF Simulation using HCIPy
 
-In this section we explore how to use a catalog which is either directly acquired or acquired from MAST Casjobs to generate PSF distribuition of a field.
-![](https://github.com/Jack3690/INSIST/blob/main/doc/CasJobs.png?raw=True) 
+In this section we explore how to use HCIPy for generating PSF for different telescopes
+![](https://github.com/Jack3690/INSIST/blob/main/doc/psf.png?raw=True) 
 
 ## [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_PSF_Analysis.ipynb)
 

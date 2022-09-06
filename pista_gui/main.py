@@ -306,8 +306,8 @@ class Ui(QtWidgets.QMainWindow):
                                         + " Default ABmag set")
                 abmag = 10
                 self.abmag.setText('10')
-            ra = [0]
-            dec= [0]
+            ra = [10]
+            dec= [10]
             mag = [abmag]
             self.df = pd.DataFrame(zip(ra,dec,mag), 
                                    columns = ['ra','dec','mag'])

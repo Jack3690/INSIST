@@ -64,12 +64,10 @@ class Imager():
     self.QN         = True
     self.cosmic_rays= False
 
-    data_path  = '/content/INSIST/src/pista/data'
-
     # Parameters
     self.tel_params = {'aperture'       : 100, # cm
                        'pixel_scale'    : 0.1,
-                       'psf_file'       :f'{data_path}/PSF/INSIST/on_axis_hcipy.npy',
+                       'psf_file'       :f'{data_path}/data/PSF/INSIST/on_axis_hcipy.npy',
                        'response_funcs' : [],
                        'coeffs'         : 1
                        }
@@ -121,11 +119,11 @@ class Imager():
         self.init_image_array()
 
         if self.n_pix_sub%2!=0:
-          n_x += (self.n_pix_sub - 1)/4
-          n_y += (self.n_pix_sub - 1)/4
+          n_x += (self.n_pix_sub - 1)
+          n_y += (self.n_pix_sub - 1)
         else:
-          n_x += self.n_pix_sub/4
-          n_y += self.n_pix_sub/4
+          n_x += self.n_pix_sub
+          n_y += self.n_pix_sub
         self.init_df( n_x , n_y,self.wcs)
     else:
         print("df cannot be None")
@@ -157,7 +155,7 @@ class Imager():
         
         self.zero_mag    = self.exp_time*self.tel_area*self.photons*self.coeffs
      
-        filt_dat  = np.loadtxt(f'/content/INSIST/src/pista/data/Sky_mag.dat')
+        filt_dat  = np.loadtxt(f'{data_path}/data/Sky_mag.dat')
         wav  = filt_dat[:,0]
         flux = filt_dat[:,1]
     
@@ -225,11 +223,11 @@ class Imager():
  
     """    
     if self.n_pix_sub%2!=0:
-        self.n_x_main += (self.n_pix_sub -1)
-        self.n_y_main += (self.n_pix_sub -1)
+        self.n_x_main = self.n_x + 2*(self.n_pix_sub -1)
+        self.n_y_main = self.n_y + 2*(self.n_pix_sub -1)
     else:
-        self.n_x_main += self.n_pix_sub
-        self.n_y_main += self.n_pix_sub
+        self.n_x_main = self.n_x + 2*self.n_pix_sub
+        self.n_y_main = self.n_y + 2*self.n_pix_sub
 
     self.image    = np.zeros((self.n_y_main, self.n_x_main)) # n
     self.wcs      = self.create_wcs(self.n_x_main, self.n_y_main,

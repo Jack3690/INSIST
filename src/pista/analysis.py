@@ -26,7 +26,7 @@ class Analyzer(Imager):
 
       """
   def __call__(self,det_params= None, n_stack =1, stack_type ='median', 
-               do_photometry =True):
+               do_photometry =True, fwhm = None):
     super().__call__(det_params = det_params, n_stack = n_stack, 
                      stack_type = stack_type)
     """
@@ -41,17 +41,20 @@ class Analyzer(Imager):
     
     if do_photometry and len(self.df)>1:
       self.data_jy, self.phot_table = self.photometry(self.digital.astype(float),
-                                                   self.wcs,self.df)
-  def photometry(self,data,wcs,df):
+                                                   self.wcs,self.df, fwhm)
+  def photometry(self,data,wcs,df, fwhm):
+      if fwhm is None:
+          fwhm = self.pixel_scale*3
 
       c          = SkyCoord(df['ra'], df['dec'],unit=u.deg)
       pix        = wcs.world_to_array_index(c)
 
       position   = [(i,j) for i,j in zip(pix[1],pix[0])]
 
-      self.aps   = aper.CircularAperture(position, r=0.3/0.1)
+      self.aps   = aper.CircularAperture(position, r= fwhm/self.pixel_scale)
       ap_pix     = np.count_nonzero(self.aps.to_mask()[0])
-      self.bags  = aper.CircularAnnulus(position, r_in = 0.6/0.1, r_out = 1/0.1)
+      self.bags  = aper.CircularAnnulus(position, r_in = fwhm/self.pixel_scale, 
+                                        r_out = 3*fwhm/self.pixel_scale)
       bag_pix    = np.count_nonzero(self.bags.to_mask()[0])
      
       phot_table      = aperture_photometry(data, [self.aps, self.bags])
@@ -105,27 +108,26 @@ class Analyzer(Imager):
     -------
     fig, ax
     """
-    if self.wcs is None :
-      self.init_image_array()
-
     # Cropping data frame to show source within n_x x n_y
     
-    fov_x   = (self.n_x*self.pixel_scale)/3600 # Degrees 
-    fov_y   = (self.n_y*self.pixel_scale)/3600 # Degrees 
+    ra_max, dec_max = self.wcs.array_index_to_world_values(self.n_y,0)
+    ra_min, dec_min = self.wcs.array_index_to_world_values(0,self.n_x)
 
-    height  = fov_x/2
-    width   = fov_y/2  
+    print(ra_max, ra_min, dec_max, dec_min)
+
     
-    ra_min  = (self.df['ra']>=self.ra - height) 
-    ra_max  = (self.df['ra']<=self.ra + height)
-    df = self.df[ ra_min & ra_max ]
+    # Cropping Dataframe based on FoV
+    ra_min_cut  = (self.df['ra']>=ra_min) 
+    ra_max_cut  = (self.df['ra']<=ra_max)
 
-    dec_min = (df['dec']>=self.dec - width)
-    dec_max = (df['dec']<=self.dec + width)
-    df      = df[ dec_min & dec_max ]
+    df = self.df[ ra_min_cut & ra_max_cut ]
 
-    fov_x  = np.round(fov_x, 3)
-    fov_y  = np.round(fov_y, 3)
+    dec_min_cut = (df['dec']>=dec_min)
+    dec_max_cut = (df['dec']<=dec_max)
+    df      = df[ dec_min_cut & dec_max_cut ]
+
+    fov_x  = ra_max - ra_min
+    fov_y  = abs(dec_max - dec_min)
 
     fig, ax = plt.subplots(1,1,figsize=figsize)
     ax.scatter(df['ra'],df['dec'],marker='.',color='black')

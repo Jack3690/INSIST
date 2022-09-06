@@ -64,11 +64,12 @@ class Imager():
     self.QN         = True
     self.cosmic_rays= False
 
+    data_path  = '/content/INSIST/src/pista/data'
 
     # Parameters
     self.tel_params = {'aperture'       : 100, # cm
                        'pixel_scale'    : 0.1,
-                       'psf_file'       :f'{data_path}/data/PSF/INSIST/on_axis_hcipy.npy',
+                       'psf_file'       :f'{data_path}/PSF/INSIST/on_axis_hcipy.npy',
                        'response_funcs' : [],
                        'coeffs'         : 1
                        }
@@ -116,14 +117,16 @@ class Imager():
     self.psf_file       = self.tel_params['psf_file']
 
     if self.df is not None:
-        self.init_sim_patch() 
+        self.init_psf_patch() 
+        self.init_image_array()
+
         if self.n_pix_sub%2!=0:
-          n_x += self.n_pix_sub - 1
-          n_y += self.n_pix_sub - 1
+          n_x += (self.n_pix_sub - 1)/4
+          n_y += (self.n_pix_sub - 1)/4
         else:
-          n_x += self.n_pix_sub
-          n_y += self.n_pix_sub
-        self.init_df( self.ra, self.dec, n_x , n_y)
+          n_x += self.n_pix_sub/4
+          n_y += self.n_pix_sub/4
+        self.init_df( n_x , n_y,self.wcs)
     else:
         print("df cannot be None")
 
@@ -133,7 +136,7 @@ class Imager():
     
     self.n_cosmic_ray_hits = int(eff_area*self.det_params['C_ray_r'])
 
-  def init_sim_patch(self, return_psf = False):
+  def init_psf_patch(self, return_psf = False):
       
     if len(self.response_funcs)>0:
 
@@ -154,7 +157,7 @@ class Imager():
         
         self.zero_mag    = self.exp_time*self.tel_area*self.photons*self.coeffs
      
-        filt_dat  = np.loadtxt(f'{data_path}/data/Sky_mag.dat')
+        filt_dat  = np.loadtxt(f'/content/INSIST/src/pista/data/Sky_mag.dat')
         wav  = filt_dat[:,0]
         flux = filt_dat[:,1]
     
@@ -182,32 +185,29 @@ class Imager():
     self.sky_bag_flux = F_sky_p    
     self.zero_flux    = self.zero_mag
 
-    self.n_pix_sub  = self.image_g_sub.shape[0]
+    self.n_pix_sub    = self.image_g_sub.shape[0]
 
     if return_psf:
       return image*self.zero_flux
 
-  def init_df(self, ra, dec,n_x, n_y):   
+  def init_df(self,n_x, n_y,wcs):   
 
-      self.fov_x   = (n_x*self.pixel_scale)/3600 # Degrees 
-      self.fov_y   = (n_y*self.pixel_scale)/3600 # Degrees 
+      ra_max, dec_max = self.wcs.array_index_to_world_values(n_y,0)
+      ra_min, dec_min = self.wcs.array_index_to_world_values(0,n_x)
 
-      height       = self.fov_x/2
-      width        = self.fov_y/2  
       
       # Cropping Dataframe based on FoV
-      ra_min  = (self.df['ra']>=ra - height) 
-      ra_max  = (self.df['ra']<=ra + height)
-      self.df = self.df[ ra_min & ra_max ]
+      ra_min_cut  = (self.df['ra']>=ra_min) 
+      ra_max_cut  = (self.df['ra']<=ra_max)
 
-      dec_min = (self.df['dec']>=dec - width)
-      dec_max = (self.df['dec']<=dec + width)
-      self.df = self.df[ dec_min & dec_max ]
+      self.df = self.df[ ra_min_cut & ra_max_cut ]
 
-      self.height = height
-      self.width  = width
-    
-      self.name = f" RA : {np.round(ra,3)} degrees, Dec : {np.round(dec,3)} degrees"
+      dec_min_cut = (self.df['dec']>=dec_min)
+      dec_max_cut = (self.df['dec']<=dec_max)
+
+      self.df = self.df[ dec_min_cut & dec_max_cut ]
+
+      self.name = f" RA : {np.round(self.ra,3)} degrees, Dec : {np.round(self.dec,3)} degrees"
 
   def init_image_array(self, return_img = False):
     """
@@ -225,11 +225,11 @@ class Imager():
  
     """    
     if self.n_pix_sub%2!=0:
-        self.n_x_main += 2*(self.n_pix_sub -1)
-        self.n_y_main += 2*(self.n_pix_sub -1)
+        self.n_x_main += (self.n_pix_sub -1)
+        self.n_y_main += (self.n_pix_sub -1)
     else:
-        self.n_x_main += 2*self.n_pix_sub
-        self.n_y_main += 2*self.n_pix_sub
+        self.n_x_main += self.n_pix_sub
+        self.n_y_main += self.n_pix_sub
 
     self.image    = np.zeros((self.n_y_main, self.n_x_main)) # n
     self.wcs      = self.create_wcs(self.n_x_main, self.n_y_main,
@@ -272,8 +272,8 @@ class Imager():
     -------
     None.
     """
-    n_x = self.n_y_main #- self.n_pix_sub-1
-    n_y = self.n_x_main
+    n_x = self.n_y 
+    n_y = self.n_x
 
     if self.QE:
         self.qe_array =  np.random.normal(loc=0, 
@@ -471,7 +471,7 @@ class Imager():
       self.gain        = self.det_params['G1']*pow(2,
                          self.det_params['bit_res'])/self.det_params['FWC']
       self.M_sky_p     = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
-      self.init_sim_patch() 
+      self.init_psf_patch() 
 
     digital_stack = []
     self.compute_coeff_arrays()
@@ -531,9 +531,10 @@ class Imager():
           self.digital[x,y] = pow(2, self.det_params['bit_res'])
 
 
-    self.init_df(self.ra, self.dec, self.n_x_main, self.n_y_main)
-    self.wcs = self.create_wcs(self.n_x_main,self.n_y_main, 
+    self.wcs = self.create_wcs(self.n_x,self.n_y, 
                                self.ra,self.dec, self.pixel_scale)
+  
+    self.init_df(self.n_x, self.n_y, self.wcs)
 
     self.header = self.wcs.to_header()
     

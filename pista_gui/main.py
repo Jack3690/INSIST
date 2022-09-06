@@ -188,7 +188,7 @@ class Ui(QtWidgets.QMainWindow):
             self.check_df.setChecked(True)
 
     def upload_psf_btn(self):
-        filters = "FITS (*.fits);;NPY (*.npy)"
+        filters = "NPY (*.npy);;FITS (*.fits)"
         psf_file = QFileDialog.getOpenFileName(filter = filters)[0]
         self.psf_filename.setText(psf_file.split('/')[-1])
         if os.path.exists(psf_file):
@@ -402,15 +402,15 @@ class Ui(QtWidgets.QMainWindow):
                
             qe_mean = self.qe_mean.text() 
             if len(qe_mean)<1:
-                self.qe_mean.setText('0.5')
-                self.params['qe_mean'] = 0.5
+                self.qe_mean.setText('0')
+                self.params['qe_mean'] = 0.
             elif self.check_input(qe_mean):
                 qe_mean = float(qe_mean)     
                 if qe_mean>0 and qe_mean <= 1:
                     self.params['qe_mean'] = qe_mean
                 else:
-                    self.qe_mean.setText('0.5')
-                    self.params['qe_mean'] = 0.5
+                    self.qe_mean.setText('0.')
+                    self.params['qe_mean'] = 0.
             
             qe_sigma = self.qe_sigma.text()
             if len(qe_sigma)<1:
@@ -600,7 +600,7 @@ class Ui(QtWidgets.QMainWindow):
         
         sim = Analyzer(df = self.df, cols = {'mag_nuv' :'mag'},
                        tel_params = tel_params, exp_time = self.exp_time_value
-                       ,n_pix= self.n_pix_value)
+                       ,n_x= self.n_pix_value, n_y= self.n_pix_value)
         
         n = int(self.n_stack.value())
         stack_type = self.stack_type.currentText()
@@ -617,7 +617,7 @@ class Ui(QtWidgets.QMainWindow):
             sim.sky = False
 
         sim(det_params = self.params,n_stack=n,stack_type=stack_type)
-        self.statusBar.showMessage('Simulation Completed')
+       # self.statusBar.showMessage('Simulation Completed')
         return sim
     def make_plots(self):
         
@@ -656,7 +656,7 @@ class Ui(QtWidgets.QMainWindow):
             
             self.figure_panel.clear()
             
-            self.wav_zp = np.linspace(1000,9000,10000)
+            self.wav_zp = np.linspace(1000,10950,10000)
             self.flux_zp = (c*1e2*3.631e-20)/(self.wav_zp**2*1e-8) 
             
             fig = self.figure_panel
@@ -728,7 +728,7 @@ class Ui(QtWidgets.QMainWindow):
                 
                 ax.plot(x,y,'.', color ='purple')
             
-            x =  np.linspace(1,1e11)
+            x =  np.linspace(1e-3,1e11)
             y = x*0 +3
             
             ax.plot(x,y)
@@ -737,11 +737,11 @@ class Ui(QtWidgets.QMainWindow):
             ax.set_ylabel('SNR')
             ax.set_xscale('log')
             ax.set_yscale('log')
-            ax.set_xlim(1,1e10)
+            ax.set_xlim(1e-3,1e7)
             
             ax.xaxis.set_major_locator(LogLocator(numticks=5))
             ax.xaxis.set_minor_locator(LogLocator(numticks=5,subs=np.arange(2,10)))
-            ax.set_ylim(1e-2,1e6)
+            ax.set_ylim(1e-3,1e4)
             ax.grid(True, which="both",axis = 'both', ls="-", color='0.65')
             ax.set_title('Photon Response', fontsize = 10)
 
@@ -754,7 +754,7 @@ class Ui(QtWidgets.QMainWindow):
             self.canvas_panel = FigureCanvas()
             fig = self.canvas_panel.figure
             # Bandpass Zero point
-            self.wav_zp = np.linspace(1000,25000,10000)
+            self.wav_zp = np.linspace(1000,10950,10000)
             self.flux_zp = (c*1e2*3.631e-20)/(self.wav_zp**2*1e-8) 
             axes = []
             
@@ -818,14 +818,14 @@ class Ui(QtWidgets.QMainWindow):
                           + (sim.photoelec_array*sim.PRNU_array)**2 + 
                           (sim.DC_array*sim.DNFP_array)**2).ravel()
                 
-                ax.set_ylim(1e-2,1e11)
+                ax.set_ylim(1e-3,1e4)
                 x = np.where(x==0,np.nan,x)
                 y = np.where(y==0,np.nan,y)
                 
                
             ax.plot(x,y,'.', color ='purple')
             
-            x =  np.linspace(1,1e11)
+            x =  np.linspace(1e-3,1e11)
             y = x*0 +3
             
             ax.plot(x,y)
@@ -834,7 +834,7 @@ class Ui(QtWidgets.QMainWindow):
             ax.set_ylabel('SNR')
             ax.set_xscale('log')
             ax.set_yscale('log')
-            ax.set_xlim(1,1e10)
+            ax.set_xlim(1e-3,1e7)
             
             ax.xaxis.set_major_locator(LogLocator(numticks=5))
             ax.xaxis.set_minor_locator(LogLocator(numticks=5,subs=np.arange(2,10)))

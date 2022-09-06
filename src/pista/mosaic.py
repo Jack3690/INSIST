@@ -124,7 +124,6 @@ class Mosaic(Analyzer):
         self.cosmic_rays= self.mosaic_cosmic_rays
         super().__call__(det_params = det_params, n_stack = n_stack, 
                           stack_type = stack_type)
-        self.show_image()
         self.mosaic_img[n_y*j:n_y*(j+1):,n_x*i:n_x*(i+1)] = self.digital
 
     self.init_df(self.mosaic_n_x, self.mosaic_n_y)

@@ -109,21 +109,20 @@ class Analyzer(Imager):
     fig, ax
     """
     # Cropping data frame to show source within n_x x n_y
+
+    wcs = self.create_wcs(self.n_x, self.n_y, self.ra,self.dec, self.pixel_scale)
     
-    ra_max, dec_max = self.wcs.array_index_to_world_values(self.n_y,0)
-    ra_min, dec_min = self.wcs.array_index_to_world_values(0,self.n_x)
-
-    print(ra_max, ra_min, dec_max, dec_min)
-
+    ra_max, dec_max = wcs.array_index_to_world_values(self.n_y,0)
+    ra_min, dec_min = wcs.array_index_to_world_values(0,self.n_x)
     
     # Cropping Dataframe based on FoV
-    ra_min_cut  = (self.df['ra']>=ra_min) 
-    ra_max_cut  = (self.df['ra']<=ra_max)
+    ra_min_cut  = (self.df['ra']>ra_min) 
+    ra_max_cut  = (self.df['ra']<ra_max)
 
     df = self.df[ ra_min_cut & ra_max_cut ]
 
-    dec_min_cut = (df['dec']>=dec_min)
-    dec_max_cut = (df['dec']<=dec_max)
+    dec_min_cut = (df['dec']>dec_min)
+    dec_max_cut = (df['dec']<dec_max)
     df      = df[ dec_min_cut & dec_max_cut ]
 
     fov_x  = ra_max - ra_min

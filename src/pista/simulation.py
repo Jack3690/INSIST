@@ -31,7 +31,7 @@ class Imager():
     tel_params : dict, 
                  {'aperture'       : float,  cm
                   'pixel_scale'    : float,  arcsecs/pixels
-                  'sim_file'       : fits,npy 
+                  'psf_file'       : fits,npy 
                   'response_funcs' : list, [filename.dat, n] where n is 
                                           number of times to multiply filter
                                           profile
@@ -46,7 +46,7 @@ class Imager():
                Exposure time in seconds 
 
     """
-    self.df     = df
+    self.df    = df
     if coords is None:
       self.ra  = (self.df['ra'].max()+self.df['ra'].min())/2
       self.dec = (self.df['dec'].max()+self.df['dec'].min())/2
@@ -116,15 +116,13 @@ class Imager():
 
     if self.df is not None:
         self.init_psf_patch() 
-        self.init_image_array()
-
         if self.n_pix_sub%2!=0:
-          n_x += (self.n_pix_sub - 1)
-          n_y += (self.n_pix_sub - 1)
+          n_x += (self.n_pix_sub - 1)/2
+          n_y += (self.n_pix_sub - 1)/2
         else:
-          n_x += self.n_pix_sub
-          n_y += self.n_pix_sub
-        self.init_df( n_x , n_y,self.wcs)
+          n_x += self.n_pix_sub/2
+          n_y += self.n_pix_sub/2
+        self.init_df(n_x , n_y)
     else:
         print("df cannot be None")
 
@@ -155,6 +153,7 @@ class Imager():
         
         self.zero_mag    = self.exp_time*self.tel_area*self.photons*self.coeffs
      
+    
         filt_dat  = np.loadtxt(f'{data_path}/data/Sky_mag.dat')
         wav  = filt_dat[:,0]
         flux = filt_dat[:,1]
@@ -188,20 +187,21 @@ class Imager():
     if return_psf:
       return image*self.zero_flux
 
-  def init_df(self,n_x, n_y,wcs):   
+  def init_df(self,n_x, n_y):  
 
-      ra_max, dec_max = self.wcs.array_index_to_world_values(n_y,0)
-      ra_min, dec_min = self.wcs.array_index_to_world_values(0,n_x)
+      wcs = self.create_wcs(n_x, n_y, self.ra,self.dec, self.pixel_scale)
 
+      ra_max, dec_max = wcs.array_index_to_world_values(n_y,0)
+      ra_min, dec_min = wcs.array_index_to_world_values(0,n_x)
       
       # Cropping Dataframe based on FoV
-      ra_min_cut  = (self.df['ra']>=ra_min) 
-      ra_max_cut  = (self.df['ra']<=ra_max)
+      ra_min_cut  = (self.df['ra']>ra_min) 
+      ra_max_cut  = (self.df['ra']<ra_max)
 
       self.df = self.df[ ra_min_cut & ra_max_cut ]
 
-      dec_min_cut = (self.df['dec']>=dec_min)
-      dec_max_cut = (self.df['dec']<=dec_max)
+      dec_min_cut = (self.df['dec']>dec_min)
+      dec_max_cut = (self.df['dec']<dec_max)
 
       self.df = self.df[ dec_min_cut & dec_max_cut ]
 
@@ -229,7 +229,7 @@ class Imager():
         self.n_x_main = self.n_x + 2*self.n_pix_sub
         self.n_y_main = self.n_y + 2*self.n_pix_sub
 
-    self.image    = np.zeros((self.n_y_main, self.n_x_main)) # n
+    self.image    = np.zeros((self.n_y_main, self.n_x_main)) #  
     self.wcs      = self.create_wcs(self.n_x_main, self.n_y_main,
                                     self.ra, self.dec, self.pixel_scale)
     if return_img:
@@ -256,7 +256,7 @@ class Imager():
 
     """ 
     w = WCS(naxis=2)
-    w.wcs.crpix = [(n_x-1)//2, (n_y-1)//2]
+    w.wcs.crpix = [(n_x)//2, (n_y)//2]
     w.wcs.cdelt = np.array([-pixel_scale/3600, self.pixel_scale/3600])
     w.wcs.crval = [ra, dec]
     w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -405,8 +405,8 @@ class Imager():
     """
 
     if type(array) == np.float64 :
-      n_x = self.n_y_main
-      n_y = self.n_x_main
+      n_x = self.n_y
+      n_y = self.n_x
 
     else :
       n_x = array.shape[0]
@@ -424,7 +424,7 @@ class Imager():
     return shot_noise  
 
 
-  def __call__(self,det_params = None,n_stack =1,stack_type = 'median'):
+  def __call__(self,det_params = None,n_stack = 1,stack_type = 'median', **kwargs):
     """
      Parameters
      ----------
@@ -469,7 +469,6 @@ class Imager():
       self.gain        = self.det_params['G1']*pow(2,
                          self.det_params['bit_res'])/self.det_params['FWC']
       self.M_sky_p     = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
-      self.init_psf_patch() 
 
     digital_stack = []
     self.compute_coeff_arrays()
@@ -532,7 +531,7 @@ class Imager():
     self.wcs = self.create_wcs(self.n_x,self.n_y, 
                                self.ra,self.dec, self.pixel_scale)
   
-    self.init_df(self.n_x, self.n_y, self.wcs)
+    self.init_df(self.n_x, self.n_y)
 
     self.header = self.wcs.to_header()
     

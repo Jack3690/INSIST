@@ -53,25 +53,23 @@ class Mosaic(Analyzer):
     Parameters
     ----------
     n : int,
-        number of tiles in RA direction
+         number of tiles in RA direction
 
     m : int,
-        number of tiles in Dec direction
+         number of tiles in Dec direction
 
     n_x : int,
-          number of pixels in RA direction
+         number of pixels in RA direction
 
     n_y : int,
-          number of pixels in Dec direction
-
-
+         number of pixels in Dec direction
     """
 
     x_bins = np.linspace(0,n_x,n+1)
     y_bins = np.linspace(0,n_y,m+1)
 
-    x_cens = 0.5*(x_bins[:-1] + x_bins[1:])
-    y_cens = 0.5*(y_bins[:-1] + y_bins[1:])
+    x_cens = 0.5*(x_bins[:-1] + x_bins[1:]) - 1
+    y_cens = 0.5*(y_bins[:-1] + y_bins[1:]) - 1
     
     cens = wcs.array_index_to_world_values(y_cens,x_cens)
     ra_cens  = cens[0]
@@ -82,7 +80,7 @@ class Mosaic(Analyzer):
     self.decs = dec_cens
                    
   def __call__(self,det_params = None, n_stack = 1, stack_type = 'median', 
-               do_photometry = True):
+               do_photometry = True, fwhm = None):
     
     """
       Analyzer.call()
@@ -115,8 +113,6 @@ class Mosaic(Analyzer):
         
         super().__init__(df = df, coords=coords, exp_time = exp_time, n_x = n_x, 
                     n_y = n_y, tel_params=tel_params)
-        np.random.seed(i**2+j**3)
-        self.det_params['bias'] += np.random.randint(-5,20)*8e-1 
         
         self.shot_noise = self.mosaic_shot_noise
         self.QE         = self.mosaic_QE         
@@ -131,12 +127,11 @@ class Mosaic(Analyzer):
         self.show_image()
         self.mosaic_img[n_y*j:n_y*(j+1):,n_x*i:n_x*(i+1)] = self.digital
 
-    self.init_df(self.mosaic_ra, self.mosaic_dec, self.mosaic_n_x 
-                 , self.mosaic_n_y )
+    self.init_df(self.mosaic_n_x, self.mosaic_n_y)
     
     if do_photometry:
       self.data_jy, self.phot_table = self.photometry(self.mosaic_img.astype(float),
-                                                   self.mosaic_wcs,self.df)
+                                                   self.mosaic_wcs,self.df, fwhm)
 
 
   def show_mosaic(self, fig = None, ax = None,cmap = 'jet', 
@@ -200,3 +195,4 @@ class Mosaic(Analyzer):
       hdul.writeto(f'{name}',overwrite= True)
     else:
       print("Run Simulation")
+

@@ -377,7 +377,7 @@ class Ui(QtWidgets.QMainWindow):
                     self.response_funcs.append(f'{self.coating_file},{self.n_mirrors}')
             
         # Filters
-        if len(self.filter_filenames.text() )<1:
+        if len(self.filter_filenames.text()) <1:
             filters = [f'{data_path}/data/INSIST/UV/Filter.dat', 
                        f'{data_path}/data/INSIST/UV/Dichroic.dat',
                        f'{data_path}/data/INSIST/UV/Dichroic.dat']

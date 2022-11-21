@@ -611,6 +611,7 @@ class Ui(QtWidgets.QMainWindow):
         sim.PRNU    = self.PRNU.isChecked()
         sim.DC      = self.DC.isChecked()
         sim.DNFP    = self.DNFP.isChecked()
+        sim.cuda    = True
         if self.shot_noise_type.currentText()=='None':
             sim.shot_noise = False
         if self.sky_shot_noise_type.currentText()=='None':
@@ -1014,7 +1015,7 @@ class Ui(QtWidgets.QMainWindow):
         source = self.output_select.currentText()
         if self.sim is not None:
             self.sim.writeto(name = f'{source}.fits',source = source)   
-            self.statusBar.showMessage(f'Downloading Image to : {data_path}')
+            self.statusBar.showMessage(f'Downloading Image to : {os. getcwd()}')
             
 if __name__ == "__main__":
     import sys

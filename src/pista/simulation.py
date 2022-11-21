@@ -12,6 +12,10 @@ import json
 import requests
 from .utils import bandpass
 
+import torch
+import torch.nn.functional as F
+from torch.autograd import Variable
+
 data_path = Path(__file__).parent.joinpath()
 
 class Imager():
@@ -31,7 +35,7 @@ class Imager():
     tel_params : dict, 
                  {'aperture'       : float,  cm
                   'pixel_scale'    : float,  arcsecs/pixels
-                  'psf_file'       : fits,npy 
+                  'sim_file'       : fits,npy 
                   'response_funcs' : list, [filename.dat, n] where n is 
                                           number of times to multiply filter
                                           profile
@@ -63,6 +67,7 @@ class Imager():
     self.DNFP       = True
     self.QN         = True
     self.cosmic_rays= False
+    self.cuda       = False
 
     # Parameters
     self.tel_params = {'aperture'       : 100, # cm
@@ -496,6 +501,17 @@ class Imager():
         self.light_array = self.source_photoelec +  self.sky_photoelec
       else:
         self.light_array = self.source_photoelec
+      
+      if self.cuda :
+            data     = torch.tensor(self.light_array.astype(float)).unsqueeze(0).cuda()
+            kernel_t = torch.tensor(self.image_g_sub).cuda()
+
+            out = F.conv2d(Variable(data.view(1,1,self.n_x,self.n_y)),
+                      Variable(kernel_t.view(1,1,self.image_g_sub.shape[0],
+                                              self.image_g_sub.shape[1])),
+                      padding = 'same').squeeze().cpu().numpy()
+
+            self.light_array = out.astype(int)
 
       if self.PRNU:
         self.light_array*=(1+self.PRNU_array)
@@ -536,3 +552,7 @@ class Imager():
     self.header = self.wcs.to_header()
     
     return self.digital
+
+
+
+

@@ -5,4 +5,4 @@ photutils
 numpy
 seaborn
 scipy
-pyqt5
+torch

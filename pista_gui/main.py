@@ -611,7 +611,8 @@ class Ui(QtWidgets.QMainWindow):
         sim.PRNU    = self.PRNU.isChecked()
         sim.DC      = self.DC.isChecked()
         sim.DNFP    = self.DNFP.isChecked()
-        sim.cuda    = True
+        sim.cuda    = False
+        sim.fftconv = True
         if self.shot_noise_type.currentText()=='None':
             sim.shot_noise = False
         if self.sky_shot_noise_type.currentText()=='None':

@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: insist-pista
-Version: 1.1.1
+Version: 1.2.1
 Summary: Python Image Simulation and Testing Application. An astronomical image simulation package
 Home-page: https://github.com/Jack3690/INSIST
 Author: Avinash CK
@@ -77,7 +77,7 @@ In this section we use Astropy to generate Gaussian and Airy disk PSFs based on 
 In this section we explore how to use HCIPy for generating PSF for different telescopes
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/psf.png?raw=True) 
 
-## [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_PSF_Analysis.ipynb)
+## [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb)
 
 This notebook contains Python routines used for comparing off axis and on axis PSFs generated using Zemax and HCIPy. The aim is to quantitatively study how presence of an on-axis secondary modifies the PSF, and how it would affect the expected science cases.
 ![](https://github.com/Jack3690/INSIST/blob/main/doc/off_axis_vs_on_axis.png?raw=True) 

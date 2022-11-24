@@ -35,11 +35,10 @@ def bandpass(wav, flux , inputs, plot = True, fig = None, ax = None):
     
     filt_dat  = np.loadtxt(f'{file_name}')
     wav  = filt_dat[:,0]
-    flux = filt_dat[:,1:]
+    flux = filt_dat[:,1]
     
-    if flux.max()>50:
-      flux/=100
-    flux = flux.prod(axis = 1)
+    if flux.max()>1:
+      flux/=flux.max()
 
     indices  = np.where( (wav>lambda_ [0]) & (wav<lambda_[-1]))
     wav_new  = wav[indices]

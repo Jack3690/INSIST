@@ -6,6 +6,7 @@ from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 from astropy.io import fits
 from scipy.constants import c
+from scipy.signal import fftconvolve
 import os
 from pathlib import Path
 import json
@@ -19,7 +20,7 @@ from torch.autograd import Variable
 data_path = Path(__file__).parent.joinpath()
 
 class Imager():
-  def __init__(self, df, coords, tel_params, n_x, n_y, exp_time, **kwargs):   
+  def __init__(self, df, coords, tel_params, n_x, n_y, exp_time, plot,**kwargs):   
     """Image simulation using Source catalog. Class which simulates the field 
     and creates image
 
@@ -67,7 +68,8 @@ class Imager():
     self.DNFP       = True
     self.QN         = True
     self.cosmic_rays= False
-    self.cuda       = False
+    self.cuda       = torch.cuda.is_available()
+    self.fftconv    = not torch.cuda.is_available()
 
     # Parameters
     self.tel_params = {'aperture'       : 100, # cm
@@ -120,7 +122,7 @@ class Imager():
     self.psf_file       = self.tel_params['psf_file']
 
     if self.df is not None:
-        self.init_psf_patch() 
+        self.init_psf_patch(plot = plot) 
         if self.n_pix_sub%2!=0:
           n_x += (self.n_pix_sub - 1)/2
           n_y += (self.n_pix_sub - 1)/2
@@ -137,7 +139,7 @@ class Imager():
     
     self.n_cosmic_ray_hits = int(eff_area*self.det_params['C_ray_r'])
 
-  def init_psf_patch(self, return_psf = False):
+  def init_psf_patch(self, return_psf = False, plot = False):
       
     if len(self.response_funcs)>0:
 
@@ -145,7 +147,7 @@ class Imager():
         flux = (c*1e2*3.631e-20)/(wav**2*1e-8)   # AB flux
         
         fig, ax, data, params = bandpass(wav,flux,self.response_funcs
-                                         , plot = False)
+                                         , plot = plot)
         
         lambda_phot, int_flux, W_eff = params
     
@@ -511,7 +513,13 @@ class Imager():
                                               self.image_g_sub.shape[1])),
                       padding = 'same').squeeze().cpu().numpy()
 
-            self.light_array = out.astype(int)
+            self.light_array = out.astype(float)
+            
+      elif self.fftconv :
+            data     = self.light_array.astype(float)
+            kernel_t = self.image_g_sub
+            out = fftconvolve(data, kernel_t, mode = 'same')
+            self.light_array = out.astype(float)
 
       if self.PRNU:
         self.light_array*=(1+self.PRNU_array)

@@ -30,7 +30,9 @@ src/pista/data/INSIST/UV/Coating.dat
 src/pista/data/INSIST/UV/Dichroic.dat
 src/pista/data/INSIST/UV/Filter.dat
 src/pista/data/INSIST/UV/QE.dat
-src/pista/data/PSF/INSIST/Off_PSF_Zmax.npy
-src/pista/data/PSF/INSIST/On_PSF_Zmax.npy
+src/pista/data/PSF/INSIST/off_axis_Zmax.npy
 src/pista/data/PSF/INSIST/off_axis_hcipy.npy
+src/pista/data/PSF/INSIST/off_axis_poppy.npy
+src/pista/data/PSF/INSIST/on_axis_Zmax.npy
 src/pista/data/PSF/INSIST/on_axis_hcipy.npy
+src/pista/data/PSF/INSIST/on_axis_poppy.npy

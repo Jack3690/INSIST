@@ -9,10 +9,11 @@ data_path = Path(__file__).parent.joinpath()
 
 class Analyzer(Imager):
   def __init__(self, df = None, coords = None,tel_params=None,exp_time = 100,
-               n_x = 1000, n_y = 1000, **kwargs):
+               n_x = 1000, n_y = 1000, plot = False,  **kwargs):
       
-      super().__init__(df=df, coords=coords, exp_time = exp_time, n_x = n_x,
-                       n_y = n_y, tel_params=tel_params, **kwargs)
+      super().__init__(df=df, coords=coords, tel_params=tel_params,
+                       exp_time=exp_time, n_x = n_x,  n_y = n_y,
+                       plot = plot, **kwargs)
       """
       A class to visualize and analyze the simulated image
       
@@ -67,13 +68,18 @@ class Analyzer(Imager):
       phot_table['mag_in']   = df['mag'].values
       
       if len(phot_table)>3:
+        if phot_table['SNR'].max()>=5:
+            temp_table = phot_table[phot_table['SNR']>5]
+        else:
+            temp_table = phot_table.sort('SNR', ascending = False)
       
         zero_p_flux = 0
         for i in range(3):
-          zero_p_flux += phot_table['flux'].value[i]/pow(10,
-                                        -0.4*phot_table['mag_in'].value[i])
+          zero_p_flux += temp_table['flux'].value[i]/pow(10,
+                                        -0.4*temp_table['mag_in'].value[i])
         zero_p_flux/=3
         print('Estimated Zero point using 3 stars')
+        
       elif len(phot_table)>0:
           zero_p_flux = 0
           for i in range(len(phot_table)):

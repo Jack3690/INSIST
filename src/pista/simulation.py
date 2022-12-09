@@ -1,8 +1,3 @@
-import numpy as np
-import pandas as pd
-
-from astropy import units as u
-from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 from astropy.io import fits
 from scipy.constants import c
@@ -12,16 +7,17 @@ from pathlib import Path
 import json
 import requests
 from .utils import bandpass
+from .analysis import *
 
-import torch
-import torch.nn.functional as F
-from torch.autograd import Variable
 
 data_path = Path(__file__).parent.joinpath()
 
-class Imager():
-  def __init__(self, df, coords, tel_params, n_x, n_y, exp_time, plot,**kwargs):   
+class Imager(Analyzer):
+  def __init__(self, df, coords = None, tel_params = None, n_x = 1000, 
+               n_y = 1000, exp_time = 100, plot = False,**kwargs):  
+    super().__init__() 
     """Image simulation using Source catalog. Class which simulates the field 
+    
     and creates image
 
     Parameters
@@ -68,8 +64,6 @@ class Imager():
     self.DNFP       = True
     self.QN         = True
     self.cosmic_rays= False
-    self.cuda       = torch.cuda.is_available()
-    self.fftconv    = not torch.cuda.is_available()
 
     # Parameters
     self.tel_params = {'aperture'       : 100, # cm
@@ -149,18 +143,17 @@ class Imager():
         fig, ax, data, params = bandpass(wav,flux,self.response_funcs
                                          , plot = plot)
         
-        lambda_phot, int_flux, W_eff = params
+        lambda_phot, int_flux, W_eff, flux_ratio = params
     
         self.lambda_phot = lambda_phot
         self.int_flux    = int_flux
         self.W_eff       = W_eff
         self.int_flux_Jy = (int_flux*lambda_phot**2*1e-8)/(c*1e2*1e-23)
         
-        self.photons     = 1.51e3*self.int_flux_Jy*(W_eff/lambda_phot)
+        self.photons     = 1.51e3*self.int_flux_Jy*(W_eff/lambda_phot)*flux_ratio
         
-        self.zero_mag    = self.exp_time*self.tel_area*self.photons*self.coeffs
+        self.zero_flux    = self.exp_time*self.tel_area*self.photons*self.coeffs
      
-    
         filt_dat  = np.loadtxt(f'{data_path}/data/Sky_mag.dat')
         wav  = filt_dat[:,0]
         flux = filt_dat[:,1]
@@ -168,13 +161,13 @@ class Imager():
         fig, ax, data, params= bandpass(wav,flux,self.response_funcs
                                          , plot = False)
         
-        lambda_eff, int_flux, W_eff = params
+        lambda_eff, int_flux, W_eff,_ = params
         self.det_params['M_sky'] = int_flux
-        self.M_sky_p         = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
 
     else :
-      self.zero_mag =  self.exp_time*(1.51e3*1000/2250)*self.tel_area*3631*self.coeffs
-      self.M_sky_p  = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
+      self.zero_flux =  self.exp_time*(1.51e3*1000/2250)*self.tel_area*3631*self.coeffs
+      
+    self.M_sky_p   = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
 
     ext = self.psf_file.split('.')[-1]
     
@@ -185,9 +178,7 @@ class Imager():
          
     image            /= image.sum()  # Flux normalized to 1
     self.image_g_sub  = image
-    F_sky_p           = self.zero_mag*pow(10,-0.4*self.M_sky_p)
-    self.sky_bag_flux = F_sky_p    
-    self.zero_flux    = self.zero_mag
+    self.sky_bag_flux = self.zero_flux*pow(10,-0.4*self.M_sky_p)  
 
     self.n_pix_sub    = self.image_g_sub.shape[0]
 
@@ -431,7 +422,8 @@ class Imager():
     return shot_noise  
 
 
-  def __call__(self,det_params = None,n_stack = 1,stack_type = 'median', **kwargs):
+  def __call__(self,det_params = None,n_stack = 1,stack_type = 'median',
+               photometry = 'Aper', fwhm = None, detect_sources = False,**kwargs):
     """
      Parameters
      ----------
@@ -503,23 +495,6 @@ class Imager():
         self.light_array = self.source_photoelec +  self.sky_photoelec
       else:
         self.light_array = self.source_photoelec
-      
-      if self.cuda :
-            data     = torch.tensor(self.light_array.astype(float)).unsqueeze(0).cuda()
-            kernel_t = torch.tensor(self.image_g_sub).cuda()
-
-            out = F.conv2d(Variable(data.view(1,1,self.n_x,self.n_y)),
-                      Variable(kernel_t.view(1,1,self.image_g_sub.shape[0],
-                                              self.image_g_sub.shape[1])),
-                      padding = 'same').squeeze().cpu().numpy()
-
-            self.light_array = out.astype(float)
-            
-      elif self.fftconv :
-            data     = self.light_array.astype(float)
-            kernel_t = self.image_g_sub
-            out = fftconvolve(data, kernel_t, mode = 'same')
-            self.light_array = out.astype(float)
 
       if self.PRNU:
         self.light_array*=(1+self.PRNU_array)
@@ -558,8 +533,10 @@ class Imager():
     self.init_df(self.n_x, self.n_y)
 
     self.header = self.wcs.to_header()
-    
-    return self.digital
+
+    super().__call__(photometry = photometry, fwhm = fwhm,
+                     detect_sources = detect_sources)
+
 
 
 

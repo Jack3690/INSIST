@@ -4,8 +4,8 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import QtWidgets
 
+from pista.simulation import *
 import pista as Sim
-from pista.analysis import *
 from pista.utils import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -238,7 +238,7 @@ class Ui(QtWidgets.QMainWindow):
             mag_nuv = [10]
             self.df = pd.DataFrame(zip(ra,dec,mag_nuv), columns = ['ra','dec','mag'])
            
-        sim = Analyzer(df = self.df, exp_time = 60)
+        sim = Imager(df = self.df, exp_time = 60)
         
         self.abmag.setText('10')
         self.check_abmag.setChecked(True)
@@ -598,7 +598,7 @@ class Ui(QtWidgets.QMainWindow):
                      'response_funcs': self.response_funcs,
                      'pixel_scale' : self.ps_value}
         
-        sim = Analyzer(df = self.df, cols = {'mag_nuv' :'mag'},
+        sim = Imager(df = self.df, cols = {'mag_nuv' :'mag'},
                        tel_params = tel_params, exp_time = self.exp_time_value
                        ,n_x= self.n_pix_value, n_y= self.n_pix_value)
         
@@ -611,8 +611,7 @@ class Ui(QtWidgets.QMainWindow):
         sim.PRNU    = self.PRNU.isChecked()
         sim.DC      = self.DC.isChecked()
         sim.DNFP    = self.DNFP.isChecked()
-        sim.cuda    = False
-        sim.fftconv = True
+
         if self.shot_noise_type.currentText()=='None':
             sim.shot_noise = False
         if self.sky_shot_noise_type.currentText()=='None':

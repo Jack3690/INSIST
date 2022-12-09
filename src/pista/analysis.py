@@ -3,17 +3,24 @@ from photutils.aperture import aperture_photometry
 from matplotlib import colors as col
 import matplotlib.pyplot as plt
 from astropy.io import fits
-from .simulation import *
 
-data_path = Path(__file__).parent.joinpath()
+from photutils import aperture as aper
+from photutils.aperture import aperture_photometry
+from photutils.aperture import CircularAperture
+from photutils.isophote import Ellipse
 
-class Analyzer(Imager):
-  def __init__(self, df = None, coords = None,tel_params=None,exp_time = 100,
-               n_x = 1000, n_y = 1000, plot = False,  **kwargs):
-      
-      super().__init__(df=df, coords=coords, tel_params=tel_params,
-                       exp_time=exp_time, n_x = n_x,  n_y = n_y,
-                       plot = plot, **kwargs)
+from photutils.detection import IRAFStarFinder, DAOStarFinder
+from photutils.psf import IntegratedGaussianPRF, DAOGroup, DAOPhotPSFPhotometry
+
+from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.coordinates import SkyCoord
+from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
+from astropy import units as u
+
+import numpy as np
+
+class Analyzer(object):
+  def __init__(self):
       """
       A class to visualize and analyze the simulated image
       
@@ -26,10 +33,7 @@ class Analyzer(Imager):
       None.
 
       """
-  def __call__(self,det_params= None, n_stack =1, stack_type ='median', 
-               do_photometry =True, fwhm = None):
-    super().__call__(det_params = det_params, n_stack = n_stack, 
-                     stack_type = stack_type)
+  def __call__(self, photometry = None, detect_sources = False, fwhm = None):
     """
     
     Performs sim simulation and sim Photometry
@@ -40,22 +44,35 @@ class Analyzer(Imager):
                     Do Aperture Photometry 
     """
     
-    if do_photometry and len(self.df)>1:
-      self.data_jy, self.phot_table = self.photometry(self.digital.astype(float),
-                                                   self.wcs,self.df, fwhm)
-  def photometry(self,data,wcs,df, fwhm):
+    if photometry == 'Aper':
+      self.aper_photometry(self.digital.astype(float), self.wcs,self.df, fwhm,
+                           detect_sources)
+    elif photometry == 'PSF':
+      self.psf_photometry(self.digital.astype(float), self.wcs,self.df, fwhm,
+                          detect_sources)
+
+  def aper_photometry(self,data,wcs,df, fwhm, detect):
       if fwhm is None:
-          fwhm = self.pixel_scale*3
+          fwhm = 3
+      else:
+        fwhm/=self.pixel_scale
 
-      c          = SkyCoord(df['ra'], df['dec'],unit=u.deg)
-      pix        = wcs.world_to_array_index(c)
+      if detect:
 
-      position   = [(i,j) for i,j in zip(pix[1],pix[0])]
+        mean, median, std = sigma_clipped_stats(data, sigma=3.0) 
+        daofind = DAOStarFinder(fwhm=fwhm, threshold = 5.*std)
+        sources = daofind(data - median)
+        positions = np.transpose((sources['xcentroid'], sources['ycentroid'])) 
 
-      self.aps   = aper.CircularAperture(position, r= fwhm/self.pixel_scale)
+      else:
+        c          = SkyCoord(df['ra'], df['dec'],unit=u.deg)
+        pix        = wcs.world_to_array_index(c)
+        positions   = [(i,j) for i,j in zip(pix[1],pix[0])]
+      
+      self.aps   = aper.CircularAperture(positions, r= fwhm)
       ap_pix     = np.count_nonzero(self.aps.to_mask()[0])
-      self.bags  = aper.CircularAnnulus(position, r_in = fwhm/self.pixel_scale, 
-                                        r_out = 3*fwhm/self.pixel_scale)
+      self.bags  = aper.CircularAnnulus(positions, r_in = fwhm, 
+                                        r_out = 3*fwhm)
       bag_pix    = np.count_nonzero(self.bags.to_mask()[0])
      
       phot_table      = aperture_photometry(data, [self.aps, self.bags])
@@ -65,41 +82,46 @@ class Analyzer(Imager):
       phot_table['flux_err'] = np.sqrt( phot_table['flux'].value  + phot_table['sky_flux'].value )
   
       phot_table['SNR']      = phot_table['flux'].value/ phot_table['flux_err'].value
-      phot_table['mag_in']   = df['mag'].values
-      
-      if len(phot_table)>3:
-        if phot_table['SNR'].max()>=5:
-            temp_table = phot_table[phot_table['SNR']>5]
-        else:
-            temp_table = phot_table.sort('SNR', ascending = False)
-      
-        zero_p_flux = 0
-        for i in range(3):
-          zero_p_flux += temp_table['flux'].value[i]/pow(10,
-                                        -0.4*temp_table['mag_in'].value[i])
-        zero_p_flux/=3
-        print('Estimated Zero point using 3 stars')
-        
-      elif len(phot_table)>0:
+
+      if not detect:
+        phot_table['mag_in']   = df['mag'].values  
+        if len(phot_table)>3: 
           zero_p_flux = 0
-          for i in range(len(phot_table)):
+
+          for i in range(3):
             zero_p_flux += phot_table['flux'].value[i]/pow(10,
-                                         -0.4*phot_table['mag_in'].value[i])
-            zero_p_flux/=len(phot_table)
-      else:
-        zero_p_flux = self.zero_flux*self.exp_time
-        
-      data_jy= data*(3631/zero_p_flux)
+                                          -0.4*phot_table['mag_in'].value[i])
+          zero_p_flux/=3
+          phot_table['mag_out']  = -2.5*np.log10(phot_table['flux']/zero_p_flux)
+          phot_table['mag_err']  = 1.082/phot_table['SNR']
       
       self.header['EXPTIME'] = self.exp_time
-      self.header['ZPT']     = zero_p_flux
       self.header['BUNIT']   = 'DN'
-      phot_table['mag_out']  = -2.5*np.log10(phot_table['flux']/zero_p_flux)
-      phot_table['mag_err']  = 1.082/phot_table['SNR']
-
       self.phot_table = phot_table
+      
 
-      return data_jy, phot_table
+  def psf_photometry(self,data,wcs,df, fwhm, detect):
+      if fwhm is None:
+          fwhm = 3
+      else:
+        fwhm/=self.pixel_scale
+
+      mean, median, std = sigma_clipped_stats(data, sigma=3.0) 
+      sigma_psf = fwhm*gaussian_fwhm_to_sigma
+      psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
+
+      photometry = DAOPhotPSFPhotometry(  crit_separation = 3,
+                                          threshold = mean + 5*std,
+                                          fwhm = fwhm,
+                                          psf_model=psf_model,
+                                          fitter=LevMarLSQFitter(),
+                                          fitshape=(5, 5))
+
+      result_tab = photometry(image=data)
+
+      self.phot_table = result_tab
+
+
 
   def show_field(self,figsize=(10,10)):
     """

@@ -30,7 +30,7 @@ class Mosaic(Analyzer):
       self.mosaic_img, _ = self.init_image_array(return_img = True)
       patch_width_mid    = self.n_pix_sub//2
 
-      self.mosaic_img=self.mosaic_img[2*patch_width_mid:-2*patch_width_mid,
+      self.mosaic_img = self.mosaic_img[2*patch_width_mid:-2*patch_width_mid,
                   2*patch_width_mid:-2*patch_width_mid]
 
       self.mosaic_name = self.name    
@@ -122,6 +122,7 @@ class Mosaic(Analyzer):
         self.DNFP       = self.mosaic_DNFP
         self.QN         = self.mosaic_QN
         self.cosmic_rays= self.mosaic_cosmic_rays
+        
         super().__call__(det_params = det_params, n_stack = n_stack, 
                           stack_type = stack_type)
         self.mosaic_img[n_y*j:n_y*(j+1):,n_x*i:n_x*(i+1)] = self.digital

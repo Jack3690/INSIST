@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name          = 'insist-pista',
-    version       = '1.0.12',    
+    version       = '1.0.14',    
     description   = 'Python Image Simulation and Testing Application. An astronomical image simulation package',
     url           = 'https://github.com/Jack3690/INSIST',
     author        = 'Avinash CK',

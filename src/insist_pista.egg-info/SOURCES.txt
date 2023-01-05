@@ -9,7 +9,6 @@ src/insist_pista.egg-info/requires.txt
 src/insist_pista.egg-info/top_level.txt
 src/pista/__init__.py
 src/pista/analysis.py
-src/pista/mosaic.py
 src/pista/simulation.py
 src/pista/utils.py
 src/pista/data/Sky_mag.dat

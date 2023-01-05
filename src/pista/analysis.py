@@ -33,7 +33,8 @@ class Analyzer(object):
       None.
 
       """
-  def __call__(self, photometry = None, detect_sources = False, fwhm = None):
+  def __call__(self, df = None, wcs = None, data = None,
+               photometry = None, detect_sources = False, fwhm = None):
     """
     
     Performs sim simulation and sim Photometry
@@ -45,10 +46,10 @@ class Analyzer(object):
     """
     
     if photometry == 'Aper':
-      self.aper_photometry(self.digital.astype(float), self.wcs,self.df, fwhm,
+      self.aper_photometry(data, wcs, df, fwhm,
                            detect_sources)
     elif photometry == 'PSF':
-      self.psf_photometry(self.digital.astype(float), self.wcs,self.df, fwhm,
+      self.psf_photometry(data, wcs, df, fwhm,
                           detect_sources)
 
   def aper_photometry(self,data,wcs,df, fwhm, detect):
@@ -84,7 +85,9 @@ class Analyzer(object):
       phot_table['SNR']      = phot_table['flux'].value/ phot_table['flux_err'].value
 
       if not detect:
-        phot_table['mag_in']   = df['mag'].values  
+        phot_table['mag_in']   = df['mag'].values 
+        phot_table['ra']       = df['ra'].values
+        phot_table['dec']      = df['dec'].values 
         if len(phot_table)>3: 
           zero_p_flux = 0
 
@@ -108,6 +111,7 @@ class Analyzer(object):
 
       mean, median, std = sigma_clipped_stats(data, sigma=3.0) 
       sigma_psf = fwhm*gaussian_fwhm_to_sigma
+      fitter = LevMarLSQFitter()
       psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
 
       photometry = DAOPhotPSFPhotometry(  crit_separation = 3,
@@ -120,8 +124,6 @@ class Analyzer(object):
       result_tab = photometry(image=data)
 
       self.phot_table = result_tab
-
-
 
   def show_field(self,figsize=(10,10)):
     """
@@ -139,22 +141,25 @@ class Analyzer(object):
     # Cropping data frame to show source within n_x x n_y
 
     wcs = self.create_wcs(self.n_x, self.n_y, self.ra,self.dec, self.pixel_scale)
-    
-    ra_max, dec_max = wcs.array_index_to_world_values(self.n_y,0)
-    ra_min, dec_min = wcs.array_index_to_world_values(0,self.n_x)
-    
+ 
     # Cropping Dataframe based on FoV
-    ra_min_cut  = (self.df['ra']>ra_min) 
-    ra_max_cut  = (self.df['ra']<ra_max)
+    x_min_cut = (self.df['x'] > self.n_pix_sub - 1) 
+    x_max_cut = (self.df['x'] < self.n_y_sim   - self.n_pix_sub - 1)
 
-    df = self.df[ ra_min_cut & ra_max_cut ]
+    df        = self.df[ x_min_cut & x_max_cut ]
 
-    dec_min_cut = (df['dec']>dec_min)
-    dec_max_cut = (df['dec']<dec_max)
-    df      = df[ dec_min_cut & dec_max_cut ]
+    y_min_cut = (self.df['y']>self.n_pix_sub - 1) 
+    y_max_cut = (self.df['y']<self.n_x_sim - self.n_pix_sub -1)
 
-    fov_x  = ra_max - ra_min
-    fov_y  = abs(dec_max - dec_min)
+    df = df[y_min_cut & y_max_cut]
+
+    ra_max  = df['ra'].max()
+    ra_min  = df['ra'].min()
+    dec_max = df['dec'].max()
+    dec_min = df['dec'].min()
+
+    fov_x  = np.round(ra_max - ra_min,5)
+    fov_y  = np.round(abs(dec_max - dec_min),5)
 
     fig, ax = plt.subplots(1,1,figsize=figsize)
     ax.scatter(df['ra'],df['dec'],marker='.',color='black')
@@ -165,7 +170,7 @@ class Analyzer(object):
     ax.set_ylabel('Dec (Degrees)')
     return fig,ax
 
-  def show_image(self, source = 'Digital', fig = None, ax = None,cmap = 'jet', 
+  def show_image(self, source = 'Digital', fig = None, ax = None, cmap = 'jet', 
                  figsize = (15,10), download = False, show_wcs = True):
     """
     Function for plotting the simulated field image
@@ -203,8 +208,12 @@ class Analyzer(object):
     if np.all(self.image) !=None :
         if fig is None or ax is None:
             fig = plt.figure(figsize = figsize)
-        norm = None
-        
+            if show_wcs:
+              ax = fig.add_subplot(projection=self.wcs)
+            else:
+              ax = fig.add_subplot()
+
+        norm = None     
         if source == 'Digital':
           data  = self.digital
           norm = col.LogNorm()
@@ -233,10 +242,6 @@ class Analyzer(object):
           print("Invalid Input")
           return None
     
-        if show_wcs:
-            ax = fig.add_subplot(projection=self.wcs)
-        else:
-            ax = fig.add_subplot()
         ax.patch.set_edgecolor('black')  
         ax.patch.set_linewidth('3') 
         img = ax.imshow(data,cmap=cmap , norm = norm)

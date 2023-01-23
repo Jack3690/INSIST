@@ -15,6 +15,6 @@ Welcome to PISTA's documentation!
 Indices and tables
 ==================
 
-* :ref:`genindex`
+* :ref:`source/genindex`
 * :ref:`modindex`
 * :ref:`search`

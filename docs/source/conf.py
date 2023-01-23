@@ -13,7 +13,7 @@ os.environ['PYTHONPATH'] = ':'.join((package_path, os.environ.get('PYTHONPATH', 
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'PISTA'
-copyright = '2023, Avinash CK and Science team at IIA, Bangalore'
+copyright = '2023, Avinash CK and INSIST Science team at IIA, Bangalore'
 author = 'Avinash CK and Science team at IIA, Bangalore'
 release = '1.0.0'
 
@@ -29,12 +29,12 @@ extensions = ['sphinx.ext.napoleon',
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = []
 
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']

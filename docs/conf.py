@@ -22,13 +22,12 @@ release = 1.0.0
 copyright = author
 language = 'en'
 
-extensions = [
-    'sphinx.ext.intersphinx',
+extensions = ['sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
-    'sphinx_rtd_theme',
+    'sphinx.ext.coverage',
+    'sphinx.ext.autosectionlabel',
+    'jupyter_sphinx',
 ]
 
 templates_path = ['_templates']

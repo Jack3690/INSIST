@@ -11,7 +11,6 @@ set SPHINXOPTS=
 set SPHINXBUILD=sphinx-build
 set SOURCEDIR=.
 set BUILDDIR=build
-set SPHINXPROJ=ReadtheDocsSphinxTheme
 
 if "%1" == "" goto help
 

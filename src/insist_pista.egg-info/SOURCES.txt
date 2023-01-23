@@ -12,9 +12,9 @@ src/pista/analysis.py
 src/pista/simulation.py
 src/pista/utils.py
 src/pista/data/Sky_mag.dat
-src/pista/data/example.csv
 src/pista/data/icon.png
 src/pista/data/pista.ui
+src/pista/data/sample.fits
 src/pista/data/INSIST/Coating.dat
 src/pista/data/INSIST/QE.dat
 src/pista/data/INSIST/G/Dichroic.dat

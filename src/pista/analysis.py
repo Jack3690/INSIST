@@ -242,8 +242,6 @@ class Analyzer(object):
           print("Invalid Input")
           return None
     
-        ax.patch.set_edgecolor('black')  
-        ax.patch.set_linewidth('3') 
         img = ax.imshow(data,cmap=cmap , norm = norm)
         plt.colorbar(img,ax = ax)
         ax.set_title(f'{source} \nRequested center : {self.name}')

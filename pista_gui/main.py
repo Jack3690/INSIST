@@ -277,7 +277,7 @@ class Ui(QtWidgets.QMainWindow):
                    f'{data_path}/data/INSIST/UV/Dichroic.dat',
                    f'{data_path}/data/INSIST/UV/Dichroic.dat']
         
-        self.filter_files =  [f'{i},1' for i in filters]
+        self.filter_files =  [f'{i},1,100' for i in filters]
         self.filter_filenames.setText(str([i.split('/')[-1] for i in filters]))
         self.pixel_scale.setText("0.1")
         self.QE_file = f'{data_path}/data/INSIST/QE.dat'
@@ -370,11 +370,11 @@ class Ui(QtWidgets.QMainWindow):
             self.coating_filename.setText(coating.split('/')[-1])
             self.mirrors.setValue(5)
             self.n_mirrors = 5
-            self.response_funcs.append(f'{coating},5')
+            self.response_funcs.append(f'{coating},5,100')
         else:
-            if f'{self.coating_file},{self.n_mirrors}' not in self.response_funcs:
+            if f'{self.coating_file},{self.n_mirrors},100' not in self.response_funcs:
                 if os.path.exists(self.coating_file):
-                    self.response_funcs.append(f'{self.coating_file},{self.n_mirrors}')
+                    self.response_funcs.append(f"{self.coating_file}, {self.n_mirrors},100")
             
         # Filters
         if len(self.filter_filenames.text()) <1:
@@ -382,23 +382,23 @@ class Ui(QtWidgets.QMainWindow):
                        f'{data_path}/data/INSIST/UV/Dichroic.dat',
                        f'{data_path}/data/INSIST/UV/Dichroic.dat']
             self.filter_files = filters
-            self.response_funcs+= [f'{i},1' for i in filters]
+            self.response_funcs+= [f'{i},1,100' for i in filters]
             self.filter_filenames.setText(str([i.split('/')[-1] for i in filters]))
         elif self.filter_files is not None:
             for filt in self.filter_files:
-                if f'{filt},{1}' not in self.response_funcs:
+                if f'{filt},{1},100' not in self.response_funcs:
                     if os.path.exists(filt):
-                        self.response_funcs.append(f'{filt},{1}')
+                        self.response_funcs.append(f'{filt},1,100')
         # QE
         if self.QE.isChecked():
             if len(self.QE_filename.text())<1:
                 self.QE_file = f'{data_path}/data/INSIST/QE.dat'
                 self.QE_filename.setText('QE.dat')
-                self.response_funcs.append(f'{self.QE_file},1')
+                self.response_funcs.append(f'{self.QE_file},1,100')
             else:
                 if f'{self.QE_file},{1}' not in self.response_funcs:
                     if os.path.exists(self.QE_file):
-                        self.response_funcs.append(f'{self.QE_file},1')
+                        self.response_funcs.append(f'{self.QE_file},1,100')
                
             qe_mean = self.qe_mean.text() 
             if len(qe_mean)<1:
@@ -627,8 +627,7 @@ class Ui(QtWidgets.QMainWindow):
         # Main Image    
         if self.count_sims>1:
             self.canvas_img.figure.clear()
-            self.ax_img.cla()
-            self.ax_img.set_title('')
+            self.ax_img = self.canvas_img.figure.add_subplot(projection = sim.wcs)
             self.sim.show_image(self.output_select.currentText(),
                                fig = self.canvas_img.figure, ax = self.ax_img,
                                cmap = 'gray')
@@ -637,9 +636,8 @@ class Ui(QtWidgets.QMainWindow):
             
         else:    
             self.canvas_img = FigureCanvas()  
-            self.ax_img = self.canvas_img.figure.add_subplot()
+            self.ax_img = self.canvas_img.figure.add_subplot(projection = sim.wcs)
             
-            self.canvas_img.figure.clear()   
             self.sim.show_image(self.output_select.currentText(),
                                fig = self.canvas_img.figure, ax = self.ax_img,
                                cmap = 'gray')
@@ -673,7 +671,8 @@ class Ui(QtWidgets.QMainWindow):
                                              ax = ax)
             ax.set_title('Bandpass | Zero Point', fontsize = 10)
             ax.set_xlabel(r'$\AA$',fontsize = 10)
-            
+            ax.legend([])
+            fig.suptitle('')
             
             # PSF
             ax = self.canvas_panel.figure.add_subplot(g[0,1])
@@ -708,6 +707,8 @@ class Ui(QtWidgets.QMainWindow):
                                              ax = ax)
             ax.set_title('Bandpass | Sky', fontsize = 10)
             ax.set_xlabel(r'$\AA$',fontsize = 10)
+            ax.legend([])
+            fig.suptitle('')
             
             # Photon Response
             
@@ -766,7 +767,8 @@ class Ui(QtWidgets.QMainWindow):
                                              ax = ax)
             ax.set_title('Bandpass | Zero Point', fontsize = 10)
             ax.set_xlabel(r'$\AA$',fontsize = 10)
-        
+            ax.legend([])
+            fig.suptitle('')
             
             
             # PSF
@@ -804,7 +806,8 @@ class Ui(QtWidgets.QMainWindow):
                                              ax = ax)
             ax.set_title('Bandpass | Sky', fontsize = 10)
             ax.set_xlabel(r'$\AA$',fontsize = 10)
-            
+            ax.legend([])
+            fig.suptitle('')
             # Photon Response
             
             ax = self.canvas_panel.figure.add_subplot(g[1,1])

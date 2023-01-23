@@ -116,8 +116,10 @@ class Imager(Analyzer):
     self.psf_file       = self.tel_params['psf_file']
 
     if self.df is not None:
+        self.calc_zp(plot = plot)
+        self.init_psf_patch() 
 
-        self.init_psf_patch(plot = plot) 
+        # Cropping df to sim_field
         x_left  = self.n_pix_sub - 1
         x_right = self.n_x_sim  - self.n_pix_sub - 1
         y_left  = self.n_pix_sub - 1
@@ -130,47 +132,55 @@ class Imager(Analyzer):
     else:
         print("df cannot be None")
 
-    area = ((n_x*self.pixel_scale)/3600)*((n_y*self.pixel_scale)/3600)
-
-    eff_area = (0.17/area)*self.exp_time
+    # Init Cosmic Rays
+    #area = ((n_x*self.pixel_scale)/3600)*((n_y*self.pixel_scale)/3600)
     
-    self.n_cosmic_ray_hits = int(eff_area*self.det_params['C_ray_r'])
+    #eff_area = (0.17/area)*self.exp_time
+    
+    #self.n_cosmic_ray_hits = int(eff_area*self.det_params['C_ray_r'])
 
-  def init_psf_patch(self, return_psf = False, plot = False):
-      
+  def calc_zp(self, plot = False):
     if len(self.response_funcs)>0:
 
         wav  = np.linspace(1000,10000,10000)
-        flux = (c*1e2*3.631e-20)/(wav**2*1e-8)   # AB flux
+        flux = 3631/(3.34e4*wav**2)   # AB flux
         
         fig, ax, _ , params = bandpass(wav,flux,self.response_funcs
                                          , plot = plot)
         
-        lambda_phot, int_flux, W_eff, flux_ratio = params
+        lambda_phot, int_flux, int_flux_Jy, W_eff, flux_ratio = params
     
         self.lambda_phot = lambda_phot
         self.int_flux    = int_flux
         self.W_eff       = W_eff
-        self.int_flux_Jy = (int_flux*lambda_phot**2*1e-8)/(c*1e2*1e-23)
+        self.int_flux_Jy = int_flux_Jy
         
-        self.photons     = 1.51e3*3631*(W_eff/lambda_phot)*flux_ratio
-        
-        self.zero_flux    = self.exp_time*self.tel_area*self.photons*self.coeffs
+        self.photons     = 1.51e3*self.int_flux_Jy*(W_eff/lambda_phot)*flux_ratio
+        self.zero_flux   = self.exp_time*self.tel_area*self.photons*self.coeffs
      
         filt_dat  = np.loadtxt(f'{data_path}/data/Sky_mag.dat')
         wav  = filt_dat[:,0]
         flux = filt_dat[:,1]
     
-        fig, ax, _ , params= bandpass(wav,flux,self.response_funcs
+        _, _, _ , params = bandpass(wav,flux,self.response_funcs
                                          , plot = False)
         
-        lambda_eff, int_flux, W_eff,_ = params
+        int_flux = params[1]
         self.det_params['M_sky'] = int_flux
+        self.M_sky_p   = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
 
     else :
-      self.zero_flux =  self.exp_time*(1.51e3*1000/2250)*self.tel_area*3631*self.coeffs
-      
-    self.M_sky_p   = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
+      print("Response functions not provided. Using default values")
+      self.int_flux_Jy = 3631
+      self.W_eff       = 1000
+      self.lambda_phot = 2250
+
+      self.photons     = 1.51e3*self.int_flux_Jy*(self.W_eff/self.lambda_phot)
+      self.zero_flux   = self.exp_time*self.tel_area*self.photons*self.coeffs
+      self.M_sky_p   = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
+
+
+  def init_psf_patch(self, return_psf = False): 
 
     ext = self.psf_file.split('.')[-1]
     
@@ -338,7 +348,7 @@ class Imager(Analyzer):
          Dark current rate e/s/pixels
 
       """
-    Kb  = 8.62e-5
+    Kb    = 8.62e-5
     const	= 2.55741439581387e15
 
     EgT	= 1.1557 - (7.021e-4*T**2/(1108+T))
@@ -497,7 +507,7 @@ class Imager(Analyzer):
         
         self.light_array = self.source_photoelec +  self.sky_photoelec
       else:
-        self.light_array = self.source_photoelec
+        self.light_array = self.source_photoelec 
 
       if self.PRNU:
         self.light_array*=(1+self.PRNU_array)

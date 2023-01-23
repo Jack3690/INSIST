@@ -15,13 +15,9 @@ A python package aimed at simulating astronomical images. The routine simulates 
 ```
 pip install insist-pista
 ```
-The package includes a GUI designed using PyQT5. 
-
-![](https://github.com/Jack3690/INSIST/blob/main/doc/PISTA.png?raw=True) 
 
 # Web Tools
 * PISTA Webtool                 : [Streamlit](https://jack3690-insist-webtools-pista-webtool-d79yxm.streamlitapp.com/)
-* PSF Simulation Tool           : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FPSF_Simulator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
 * Exposure Time Calculator Tool : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FExposure_Time_Calculator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
 
  
@@ -42,7 +38,7 @@ This notebook provides step by step instructions on how to use PISTA package for
 
 ## [PISTA.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PISTA.ipynb)
 
-![](https://github.com/Jack3690/INSIST/blob/main/doc/pista_flow.png?raw=True) 
+![](https://github.com/Jack3690/INSIST/blob/main/docs/pista_flow.png?raw=True) 
 This notebook  expands on the low-level framework of PISTA package. 
 
 ## [PSF_Simulator.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_Simulator.ipynb)
@@ -53,17 +49,17 @@ In this notebook, we explore how to simulate Points Spread Functions (PSF) with 
 
 In this section we use Astropy to generate Gaussian and Airy disk PSFs based on FWHM and pixel scale, normalized based on ABmag
 
-![](https://github.com/Jack3690/INSIST/blob/main/doc/SPG.png?raw=True) 
+![](https://github.com/Jack3690/INSIST/blob/main/docs/SPG.png?raw=True) 
 
 ## PSF Simulation using HCIPy
 
 In this section we explore how to use HCIPy for generating PSF for different telescopes
-![](https://github.com/Jack3690/INSIST/blob/main/doc/psf.png?raw=True) 
+![](https://github.com/Jack3690/INSIST/blob/main/docs/psf.png?raw=True) 
 
 ## [PSF_Analysis.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/PSF_Analysis.ipynb)
 
 This notebook contains Python routines used for comparing off axis and on axis PSFs generated using Zemax and HCIPy. The aim is to quantitatively study how presence of an on-axis secondary modifies the PSF, and how it would affect the expected science cases.
-![](https://github.com/Jack3690/INSIST/blob/main/doc/off_axis_vs_on_axis.png?raw=True) 
+![](https://github.com/Jack3690/INSIST/blob/main/docs/off_axis_vs_on_axis.png?raw=True) 
 
 
 ## [UV_Stellar_Catalog.ipynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/UV_Stellar_Catalog.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/UV_Stellar_Catalog.ipynb)
@@ -71,14 +67,17 @@ This notebook contains Python routines used for comparing off axis and on axis P
 This notebook contains routines which allows users to predict UV fluxes of sources using their PanSTARRS optical band magntidues through SED Fitting. The objective is to able to generate a catalog of sources in UV band using optical band magnitudes as input. For SED fitting we utilize Kurucz models http://kurucz.harvard.edu/grids.html
 
 ### Convolving Filters with Stellar models
-![](./https://github.com/Jack3690/INSIST/blob/main/doc/filter_conv.png?raw=True) 
+![](./https://github.com/Jack3690/INSIST/blob/main/docs/filter_conv.png?raw=True) 
 ### SED Fitting
-![](https://github.com/Jack3690/INSIST/blob/main/doc/sed_fitting.png?raw=True)
+![](https://github.com/Jack3690/INSIST/blob/main/docs/sed_fitting.png?raw=True)
 
 ## [Exposure_Time_Calculatoripynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator)
 
 This notebook contains routines which allows users to calculate exposure time for a range of telescope surveys such as GALEX, UVIT, LSST etc with magnitude and SNR as inputs.
 
+The package includes a GUI designed using PyQT5. (Work in Progress)
+
+![](https://github.com/Jack3690/INSIST/blob/main/docs/PISTA.png?raw=True) 
 # Conclusion/Disclaimer
 
 Please add the following acknowledgment if you use our package in your work.
@@ -90,5 +89,5 @@ please contact the owners of the repository.
 
 
 ## References
-* https://docs.hcipy.org/stable/
+* https://docss.hcipy.org/stable/
 * https://esa.gitlab.io/pyxel/

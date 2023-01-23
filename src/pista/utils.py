@@ -87,21 +87,23 @@ def bandpass(wav, flux, inputs, plot = True, fig = None, ax = None):
     if plot:
       ax.plot(lambda_ ,flux_out/flux_out.max(),label=f"{file_name.split('/')[-1][:-4]}x{n}", alpha = 0.7)
 
-  conv_flux   = R_eff*flux_AB
+  conv_flux     = R_eff*flux_AB
+  conv_flux_Jy  = R_eff*flux_AB*lambda_**2*3.34e4
  
   lambda_phot = trapz(lambda_**2*conv_flux,lambda_)/trapz(lambda_*conv_flux,lambda_)
 
   W_eff       = trapz(R_eff,lambda_)/R_eff.max()
 
   int_flux    = trapz(lambda_*conv_flux,lambda_)/trapz(lambda_*R_eff, lambda_)
+  int_flux_Jy = trapz(lambda_*conv_flux_Jy,lambda_)/trapz(lambda_*R_eff, lambda_)
 
   # Comparing to a square filter with same width
-  R_w = np.where(R_eff>0,1,0)
-  W_t = trapz(R_w,lambda_)
-  flux_ratio = trapz(R_eff,lambda_)/W_t
+  R_sq = np.where(R_eff>0,1,0)
+
+  flux_ratio = trapz(R_eff,lambda_)/trapz(R_sq,lambda_)
 
   data       =  lambda_, conv_flux, R_eff
-  params     =  lambda_phot, int_flux, W_eff, flux_ratio
+  params     =  lambda_phot, int_flux, int_flux_Jy, W_eff, flux_ratio
 
   if plot:
     ax.plot(lambda_,conv_flux/conv_flux.max(),label = 'Convloved Flux', linewidth = 5)
@@ -148,23 +150,17 @@ def generate_psf(npix,sigma, function = 'Gaussian'):
 
 def spectra_to_mags(df,inputs):
   mags = []
-  wav  = np.arange(1000,10000,1)
-  flux = 3631/(wav**2*3.33564e4)
-
-  _, _, _, params         = bandpass(wav, flux,inputs = inputs, plot = False)
-  lambda_phot, _, W_eff,_ = params
-
   for row in df:
     wav  = row['wav']
     flux = row['flux']
-    _, _, _, params            = bandpass(wav, flux,inputs = inputs, 
+    out           = bandpass(wav, flux,inputs = inputs, 
                                           plot = False)
-    l, int_flux, _, _          = params
-    int_flux_jy                = int_flux*lambda_phot**2*3.34e4
-    ABmag                      = -2.5*np.log10(int_flux_jy/3631)
+    params         = out[3]
+    int_flux_Jy    = params[2]
+    ABmag          = -2.5*np.log10(int_flux_Jy/3631)
 
     if ABmag == np.nan:
-      ABmag  = 50
+      ABmag  = 100
     mags.append(ABmag)
   df['mag']  = mags
 

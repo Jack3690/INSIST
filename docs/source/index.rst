@@ -15,7 +15,7 @@ Getting started
     
 .. jupyter-execute::
    from pista.simulation import Imager
-   help(Imager)
+   print(help(Imager))
    
 .. toctree::
    :maxdepth: 2

@@ -5,10 +5,20 @@
 
 Python Image Simulation and Testing Application
 ===============================================
+A python-based resolved stellar population image simulation package developed as part of the Indian Spectroscopic and Imaging Space Telescope (INSIST) project.
 
+.. code-block:: bash
+
+   $ pip install insist-pists
+    
+.. jupyter-execute::
+   from pista.simulation import Imager
+   help(Imager)
+   
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
 
 
 

@@ -66,8 +66,8 @@ This notebook contains routines which allows users to predict UV fluxes of sourc
 
 ### Convolving Filters with Stellar models
 ![](./https://github.com/Jack3690/INSIST/blob/main/docs/filter_conv.png?raw=True) 
-### SED Fitting
-![](https://github.com/Jack3690/INSIST/blob/main/docs/sed_fitting.png?raw=True)
+### SED fitting validation using HST PHAT M31 Survey
+![](https://github.com/Jack3690/INSIST/blob/main/docs/sed_fit.png?raw=True)
 
 ## [Exposure_Time_Calculatoripynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator)
 

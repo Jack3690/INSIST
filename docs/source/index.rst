@@ -9,7 +9,7 @@ A python-based resolved stellar population image simulation package developed as
 
 .. code-block:: bash
 
-   $ pip install insist-pists
+   $ pip install insist-pista
     
 .. jupyter-execute::
    from pista.simulation import Imager

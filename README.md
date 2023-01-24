@@ -1,3 +1,4 @@
+[![Documentation Status](https://readthedocs.org/projects/insist/badge/?version=latest)](https://insist.readthedocs.io/en/latest/?badge=latest)
 # Indian Spectroscopic and Imaging Space Telescope 
 
 Repo status : Work in Progress

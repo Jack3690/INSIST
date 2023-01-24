@@ -65,7 +65,7 @@ This notebook contains Python routines used for comparing off axis and on axis P
 This notebook contains routines which allows users to predict UV fluxes of sources using their PanSTARRS optical band magntidues through SED Fitting. The objective is to able to generate a catalog of sources in UV band using optical band magnitudes as input. For SED fitting we utilize Kurucz models http://kurucz.harvard.edu/grids.html
 
 ### Convolving Filters with Stellar models
-![](https://github.com/Jack3690/INSIST/blob/main/docs/filter_conv.png?raw=True) 
+![]{ width: 200px; }(https://github.com/Jack3690/INSIST/blob/main/docs/filter_conv.png?raw=True) 
 
 ### SED fitting validation using HST PHAT M31 Survey
 ![](https://github.com/Jack3690/INSIST/blob/main/docs/sed_fit.png?raw=True)

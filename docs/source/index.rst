@@ -23,8 +23,6 @@ Getting started
    
    pista
 
-
-
 Indices and tables
 ==================
 

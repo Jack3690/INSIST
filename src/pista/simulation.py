@@ -441,6 +441,8 @@ class Imager(Analyzer):
   def __call__(self,det_params = None,n_stack = 1,stack_type = 'median',
                photometry = 'Aper', fwhm = None, detect_sources = False,**kwargs):
     """
+    Simulates user defined field based on user defined detector charactersitcs
+    
      Parameters
      ----------
     det_params: dict, optional  
@@ -467,14 +469,18 @@ class Imager(Analyzer):
 
      stack_type : str, optional
                   Stacking method. The default is 'median'.
+     photometry : str, optional
+                  Photometry method. Aperture photometry or PSF photometry.
+                  Acceptable inputs : 'Aper', 'PSF'.
+    detect_sources: bool, optional
+                    Whether to use input catalog to do photometry or detect
+                    sources using Photutils
      
      
-    Simulates field by taking dataframe as input by inserting sim patches in 
-    image array using WCS
+    
      Returns
      -------
-     numpy.ndarray
-     Final image array after adding all layers of simulation
+    =
     
     """
     self.sim_flag = True

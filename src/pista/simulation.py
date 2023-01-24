@@ -549,7 +549,7 @@ class Imager(Analyzer):
     y_left  = 0
     y_right = self.n_y
 
-    self.img_df = self.init_df(df = self.sim_df, 
+    self.img_df = self.init_df(df = self.sim_df.copy(), 
                                 n_x = self.n_x    , n_y = self.n_y,
                                 x_left = x_left   , x_right= x_right,
                                 y_left = y_left   , y_right = y_right)

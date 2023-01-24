@@ -12,10 +12,6 @@ Getting started
 .. code-block:: bash
 
    $ pip install insist-pista
-    
-.. jupyter-execute::
-   from pista.simulation import Imager
-   print(help(Imager))
    
 .. toctree::
    :maxdepth: 2

@@ -1,4 +1,4 @@
-# Indian Spectroscopic and Imaging Space Telescope [![Documentation Status](https://readthedocs.org/projects/insist/badge/?version=latest)](https://insist-pista.readthedocs.io/en/latest/?badge=latest)[![PyPI - Python Version](https://img.shields.io/pypi/v/insist-pista.svg)](https://pypi.org/project/insist-pista/) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/insist-pista)](https://pypi.org/project/insist-pista/)  ![PyPI - Downloads](https://img.shields.io/pypi/dm/insist-pista)
+# Indian Spectroscopic and Imaging Space Telescope [![Documentation Status](https://readthedocs.org/projects/insist/badge/?version=latest)](https://insist.readthedocs.io/en/latest/?badge=latest)[![PyPI - Python Version](https://img.shields.io/pypi/v/insist-pista.svg)](https://pypi.org/project/insist-pista/) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/insist-pista)](https://pypi.org/project/insist-pista/)  ![PyPI - Downloads](https://img.shields.io/pypi/dm/insist-pista)
 
 ## Introduction
 

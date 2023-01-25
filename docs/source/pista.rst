@@ -1,11 +1,3 @@
-Module contents
-----------------
-
-.. automodule:: pista
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   
 pista.simulation module
 -----------------------
 

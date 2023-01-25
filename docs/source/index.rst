@@ -17,6 +17,8 @@ Getting started
    :maxdepth: 2
    :caption: Contents:
    
+   pista
+   
 
 Indices and tables
 ==================

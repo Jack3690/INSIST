@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: insist-pista
-Version: 1.0.16
+Version: 1.0.18
 Summary: Python Image Simulation and Testing Application. An astronomical image simulation package
 Home-page: https://github.com/Jack3690/INSIST
 Author: Avinash CK
@@ -14,9 +14,7 @@ Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.9
 Description-Content-Type: text/markdown
 
-# Indian Spectroscopic and Imaging Space Telescope 
-
-Repo status : Work in Progress
+# Indian Spectroscopic and Imaging Space Telescope [![Documentation Status](https://readthedocs.org/projects/insist/badge/?version=latest)](https://insist.readthedocs.io/en/latest/?badge=latest)[![PyPI - Python Version](https://img.shields.io/pypi/v/insist-pista.svg)](https://pypi.org/project/insist-pista/) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/insist-pista)](https://pypi.org/project/insist-pista/)  ![PyPI - Downloads](https://img.shields.io/pypi/dm/insist-pista)
 
 ## Introduction
 
@@ -83,9 +81,10 @@ This notebook contains Python routines used for comparing off axis and on axis P
 This notebook contains routines which allows users to predict UV fluxes of sources using their PanSTARRS optical band magntidues through SED Fitting. The objective is to able to generate a catalog of sources in UV band using optical band magnitudes as input. For SED fitting we utilize Kurucz models http://kurucz.harvard.edu/grids.html
 
 ### Convolving Filters with Stellar models
-![](./https://github.com/Jack3690/INSIST/blob/main/docs/filter_conv.png?raw=True) 
-### SED Fitting
-![](https://github.com/Jack3690/INSIST/blob/main/docs/sed_fitting.png?raw=True)
+![](https://github.com/Jack3690/INSIST/blob/main/docs/filter_conv.png?raw=True) 
+
+### SED fitting validation using HST PHAT M31 Survey
+![](https://github.com/Jack3690/INSIST/blob/main/docs/sed_fit.png?raw=True)
 
 ## [Exposure_Time_Calculatoripynb](https://github.com/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator.ipynb) [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jack3690/INSIST/blob/main/notebooks/Exposure_Time_Calculator)
 

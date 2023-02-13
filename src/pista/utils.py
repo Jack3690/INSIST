@@ -4,13 +4,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sb
 
-from scipy.interpolate import interp1d, interp2d
-from scipy.integrate import trapz
 from pathlib import Path
 from astropy.modeling import models
-from scipy.constants import c
 
-sb.set_style('darkgrid')
+sb.set_style('dark')
 matplotlib.rcParams['font.size']=12
 matplotlib.rcParams['figure.figsize']=(10,10)
 
@@ -65,48 +62,54 @@ def bandpass(wav, flux, inputs, plot = True, fig = None, ax = None):
     wav  = filt_dat[:,0]
     flux = filt_dat[:,1]
     
-    if flux.max()>1:
+    if np.amax(flux)>1:
       flux/=f_max
 
     indices  = np.where( (wav>lambda_ [0]) & (wav<lambda_[-1]))
     wav_new  = wav[indices]
     flux_new = flux[indices]
     
-    wav_new  =  [lambda_ [0]] + [wav_new[0]- 1] + list(wav_new) + [wav_new[-1]+ 1] + [lambda_[-1]]
-    flux_new =  [0]           + [0]             + list(flux_new) +   [0]           + [0]
+    wav_new  = np.concatenate([[lambda_ [0]], [wav_new[0]- 1], wav_new,
+                               [wav_new[-1]+ 1], [lambda_[-1]]])
     
-    wav_new  = np.array(wav_new)
-    flux_new = np.array(flux_new)
+    flux_new = np.concatenate([[0], [0], flux_new, [0], [0]])
 
-    filter_func = interp1d(wav_new,flux_new)
+    flux_out = np.interp(lambda_,wav_new,flux_new)
 
-    flux_out    = filter_func(lambda_)
-
-    R_eff      *= pow(flux_out,n)
+    R_eff      *= flux_out**n
     
     if plot:
-      ax.plot(lambda_ ,flux_out/flux_out.max(),label=f"{file_name.split('/')[-1][:-4]}x{n}", alpha = 0.7)
+      ax.plot(lambda_ ,flux_out/flux_out.max(),
+              label=f"{file_name.split('/')[-1][:-4]}x{n}", alpha = 0.7)
 
-  conv_flux     = R_eff*flux_AB
-  conv_flux_Jy  = R_eff*flux_AB*lambda_**2*3.34e4
- 
-  lambda_phot = trapz(lambda_**2*conv_flux,lambda_)/trapz(lambda_*conv_flux,lambda_)
+  # Wavelength space
+  conv_flux    = R_eff*flux_AB
+  int_flux     = np.trapz(lambda_*conv_flux,lambda_)/np.trapz(lambda_*R_eff, 
+                                                              lambda_)
+  W_eff        = np.trapz(R_eff,lambda_)/R_eff.max()
+  lambda_phot  = np.trapz(lambda_**2*conv_flux,
+                          lambda_)/np.trapz(lambda_*conv_flux,lambda_)
 
-  W_eff       = trapz(R_eff,lambda_)/R_eff.max()
+  R_sq         = np.where(R_eff>0,1,0)
+  flux_ratio   = np.trapz(R_eff,lambda_)/np.trapz(R_sq,lambda_)
 
-  int_flux    = trapz(lambda_*conv_flux,lambda_)/trapz(lambda_*R_eff, lambda_)
-  int_flux_Jy = trapz(lambda_*conv_flux_Jy,lambda_)/trapz(lambda_*R_eff, lambda_)
+  # Frequency space
+  R_eff_Jy      = R_eff*lambda_**2*3.34e4
+  flux_AB       = flux_AB*lambda_**2*3.34e4
+  nu            = 3e18/lambda_
+  
+  conv_flux_Jy  = R_eff_Jy*flux_AB
+  int_flux_Jy   = np.trapz(nu*conv_flux_Jy,nu)/np.trapz(nu*R_eff_Jy, nu)
 
   # Comparing to a square filter with same width
-  R_sq = np.where(R_eff>0,1,0)
 
-  flux_ratio = trapz(R_eff,lambda_)/trapz(R_sq,lambda_)
 
   data       =  lambda_, conv_flux, R_eff
   params     =  lambda_phot, int_flux, int_flux_Jy, W_eff, flux_ratio
 
   if plot:
-    ax.plot(lambda_,conv_flux/conv_flux.max(),label = 'Convloved Flux', linewidth = 5)
+    ax.plot(lambda_,conv_flux/conv_flux.max(),label = 'Convloved Flux',
+            linewidth = 5)
     y = np.linspace(0,1)
     x = y*0 + lambda_phot
     label = r'$\lambda_{phot} = $' + f'{round(lambda_phot,3)}' + r' $\AA$'
@@ -115,7 +118,6 @@ def bandpass(wav, flux, inputs, plot = True, fig = None, ax = None):
     ax.set_xlabel(r'$\AA$')
     ax.set_ylabel(r'Normalized Flux')
     fig.suptitle('Bandpass', fontsize = 20, y = 0.95)
-    ax.legend()
     
   return fig, ax, data, params
 

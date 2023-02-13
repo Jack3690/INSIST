@@ -47,7 +47,7 @@ class Imager(Analyzer):
                Exposure time in seconds 
 
     """
-    self.df    = df
+    self.df    = df.copy()
     if coords is None:
       self.ra  = (self.df['ra'].max()+self.df['ra'].min())/2
       self.dec = (self.df['dec'].max()+self.df['dec'].min())/2
@@ -58,14 +58,14 @@ class Imager(Analyzer):
     self.name = f" RA : {np.round(self.ra,3)} degrees, Dec : {np.round(self.dec,3)} degrees"
 
     # Flags
-    self.shot_noise = True
-    self.QE         = True
-    self.sky        = True
-    self.PRNU       = True
-    self.DC         = True
-    self.DNFP       = True
-    self.QN         = True
-    self.cosmic_rays= False
+    self.shot_noise  = True
+    self.QE          = True
+    self.sky         = True
+    self.PRNU        = True
+    self.DC          = True
+    self.DNFP        = True
+    self.QN          = True
+    self.cosmic_rays = False
 
     # Parameters
     self.tel_params = {'aperture'       : 100, # cm
@@ -170,15 +170,15 @@ class Imager(Analyzer):
         self.M_sky_p   = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
 
     else :
+
       print("Response functions not provided. Using default values")
       self.int_flux_Jy = 3631
       self.W_eff       = 1000
       self.lambda_phot = 2250
 
-      self.photons     = 1.51e3*self.int_flux_Jy*(self.W_eff/self.lambda_phot)
-      self.zero_flux   = self.exp_time*self.tel_area*self.photons*self.coeffs
+      self.photons   = 1.51e3*self.int_flux_Jy*(self.W_eff/self.lambda_phot)
+      self.zero_flux = self.exp_time*self.tel_area*self.photons*self.coeffs
       self.M_sky_p   = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
-
 
   def init_psf_patch(self, return_psf = False): 
 
@@ -378,27 +378,23 @@ class Imager(Analyzer):
       image : numpy.ndarray
           Array with sims added based on df
 
-      """
+    """
     patch_width_mid = patch_width//2
 
-    for i, row in df.iterrows():
+    x0, y0 = df['x'].astype(int), df['y'].astype(int)
+    ABmag  = df['mag'].values
+    flux   = self.zero_flux * 10**(-ABmag/2.5)
+    patch  = self.image_g_sub
+    
+    x1     = x0 - patch_width_mid
+    x2     = x1 + patch_width
+    y1     = y0 - patch_width_mid
+    y2     = y1 + patch_width
+    
+    for x1_,x2_,y1_,y2_,flux_ in zip(x1,x2,y1,y2,flux):
+      image[y1_:y2_, x1_:x2_] += flux_*patch
 
-        x0, y0 = int(row['x']), int(row['y'])
-        ABmag = row['mag']
-
-        flux  = self.zero_flux*10**(-ABmag/2.5)  # Photo-elec per second
-
-        patch =  flux*self.image_g_sub           # Generating star using sim
-
-        x1 = x0 - patch_width_mid
-        x2 = x1 + patch_width
-        y1 = y0 - patch_width_mid
-        y2 = y1 + patch_width
-        
-        image[y1:y2,x1:x2] += patch
-        
-    image = image[patch_width-1:-patch_width+1,  # Cropping to Image field
-                  patch_width-1:-patch_width+1]
+    image = image[patch_width-1:-patch_width+1, patch_width-1:-patch_width+1]
 
     return image
 
@@ -439,10 +435,9 @@ class Imager(Analyzer):
 
 
   def __call__(self,det_params = None,n_stack = 1,stack_type = 'median',
-               photometry = 'Aper', fwhm = None, detect_sources = False,**kwargs):
+               photometry = 'Aper', fwhm = 3, sigma = 3,
+               detect_sources = False,**kwargs):
     """
-    Simulates user defined field based on user defined detector charactersitcs
-    
      Parameters
      ----------
     det_params: dict, optional  
@@ -469,18 +464,14 @@ class Imager(Analyzer):
 
      stack_type : str, optional
                   Stacking method. The default is 'median'.
-     photometry : str, optional
-                  Photometry method. Aperture photometry or PSF photometry.
-                  Acceptable inputs : 'Aper', 'PSF'.
-    detect_sources: bool, optional
-                    Whether to use input catalog to do photometry or detect
-                    sources using Photutils
      
      
-    
+    Simulates field by taking dataframe as input by inserting sim patches in 
+    image array using WCS
      Returns
      -------
-    =
+     numpy.ndarray
+     Final image array after adding all layers of simulation
     
     """
     self.sim_flag = True
@@ -489,7 +480,6 @@ class Imager(Analyzer):
       self.det_params.update(det_params)
       self.gain        = self.det_params['G1']*pow(2,
                          self.det_params['bit_res'])/self.det_params['FWC']
-      self.M_sky_p     = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
 
     digital_stack = []
     self.compute_coeff_arrays()
@@ -561,10 +551,17 @@ class Imager(Analyzer):
                                 y_left = y_left   , y_right = y_right)
 
     self.header = self.wcs.to_header()
+    self.header['gain'] = self.det_params['G1']
+    self.header['Temp'] = str(self.det_params['T']) + 'K' 
+    self.header['bias'] = self.det_params['bias']
+    self.header['RN']   = self.det_params['RN']
+    self.header['DR']   = self.DR
+    self.header['NF']   = self.det_params['NF']
 
     super().__call__(df = self.img_df, wcs = self.wcs, 
                      data = self.digital.astype(float),
                      photometry = photometry, fwhm = fwhm,
                      detect_sources = detect_sources)
+
 
 

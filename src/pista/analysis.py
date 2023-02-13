@@ -9,8 +9,8 @@ from photutils.aperture import aperture_photometry
 from photutils.aperture import CircularAperture
 from photutils.isophote import Ellipse
 
-from photutils.detection import IRAFStarFinder, DAOStarFinder
-from photutils.psf import IntegratedGaussianPRF, DAOGroup, DAOPhotPSFPhotometry
+from photutils.detection import  DAOStarFinder
+from photutils.psf import  DAOPhotPSFPhotometry, FittableImageModel
 
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.coordinates import SkyCoord
@@ -34,9 +34,8 @@ class Analyzer(object):
 
       """
   def __call__(self, df = None, wcs = None, data = None,
-               photometry = None, detect_sources = False, fwhm = None):
+               photometry = None, detect_sources = False, fwhm = 3,sigma = 3):
     """
-    
     Performs sim simulation and sim Photometry
     
     Imager.call()
@@ -44,44 +43,61 @@ class Analyzer(object):
     do_photometry : Bool, Default : True
                     Do Aperture Photometry 
     """
-    
+    self.photometry_type = photometry
     if photometry == 'Aper':
       self.aper_photometry(data, wcs, df, fwhm,
                            detect_sources)
     elif photometry == 'PSF':
       self.psf_photometry(data, wcs, df, fwhm,
-                          detect_sources)
+                          sigma)
 
   def aper_photometry(self,data,wcs,df, fwhm, detect):
-      if fwhm is None:
-          fwhm = 3
-      else:
-        fwhm/=self.pixel_scale
 
+      # if detect flag is set to True, detect sources in the image
       if detect:
 
+        # calculate the mean, median and standard deviation of the data
         mean, median, std = sigma_clipped_stats(data, sigma=3.0) 
-        daofind = DAOStarFinder(fwhm=fwhm, threshold = 5.*std)
-        sources = daofind(data - median)
-        positions = np.transpose((sources['xcentroid'], sources['ycentroid'])) 
+        # create DAOStarFinder object to detect sources
+        daofind = DAOStarFinder(fwhm=fwhm, threshold = median + 3.*std)
+        # detect sources in the image
+        sources = daofind(data)
+        # get the source positions
+        positions   = np.transpose((sources['xcentroid'], sources['ycentroid'])) 
+        # Calculate zero point
+        zero_p_flux = self.zero_flux + self.sky_bag_flux
+        zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
+        zero_p_flux *= self.gain*0.9499142715255932
 
       else:
+
+        # create SkyCoord object from ra and dec values in the dataframe
         c          = SkyCoord(df['ra'], df['dec'],unit=u.deg)
+        # convert the sky coordinates to pixel coordinates
         pix        = wcs.world_to_array_index(c)
         positions   = [(i,j) for i,j in zip(pix[1],pix[0])]
       
-      self.aps   = aper.CircularAperture(positions, r= fwhm)
+      # create circular aperture object
+      self.aps   = aper.CircularAperture(positions, r = fwhm)
+      # count number of pixels within the aperture
       ap_pix     = np.count_nonzero(self.aps.to_mask()[0])
-      self.bags  = aper.CircularAnnulus(positions, r_in = fwhm, 
-                                        r_out = 3*fwhm)
+      # create circular annulus object
+      self.bags  = aper.CircularAnnulus(positions, r_in = 2*fwhm, 
+                                          r_out = 3*fwhm)
+      # count number of pixels within the annulus
       bag_pix    = np.count_nonzero(self.bags.to_mask()[0])
-     
-      phot_table      = aperture_photometry(data, [self.aps, self.bags])
+      
+      # perform aperture photometry on the data
+      phot_table = aperture_photometry(data, [self.aps, self.bags])
 
+      # calculate sky flux
       phot_table['sky_flux'] = phot_table['aperture_sum_1']*(ap_pix/bag_pix)
+      # calculate source flux
       phot_table['flux']     = phot_table['aperture_sum_0'].value - phot_table['sky_flux'].value
+      # calculate error on the source flux
       phot_table['flux_err'] = np.sqrt( phot_table['flux'].value  + phot_table['sky_flux'].value )
-  
+
+      # calculate signal to noise ratio
       phot_table['SNR']      = phot_table['flux'].value/ phot_table['flux_err'].value
 
       if not detect:
@@ -94,36 +110,52 @@ class Analyzer(object):
           for i in range(3):
             zero_p_flux += phot_table['flux'].value[i]/pow(10,
                                           -0.4*phot_table['mag_in'].value[i])
-          zero_p_flux/=3
-          phot_table['mag_out']  = -2.5*np.log10(phot_table['flux']/zero_p_flux)
-          phot_table['mag_err']  = 1.082/phot_table['SNR']
-      
+          zero_p_flux /= 3
+
+      phot_table['mag_out']  = -2.5*np.log10(phot_table['flux']/zero_p_flux)
+      phot_table['mag_err']  = 1.082/phot_table['SNR']
+      self.header['ZP']      = zero_p_flux
+
       self.header['EXPTIME'] = self.exp_time
       self.header['BUNIT']   = 'DN'
+
+      coords = np.array(wcs.pixel_to_world_values(positions))
+      phot_table['ra']  = coords[:,0]
+      phot_table['dec'] = coords[:,1]
       self.phot_table = phot_table
       
 
-  def psf_photometry(self,data,wcs,df, fwhm, detect):
-      if fwhm is None:
-          fwhm = 3
-      else:
-        fwhm/=self.pixel_scale
+  def psf_photometry(self,data,wcs,df, fwhm, sigma):
 
-      mean, median, std = sigma_clipped_stats(data, sigma=3.0) 
-      sigma_psf = fwhm*gaussian_fwhm_to_sigma
-      fitter = LevMarLSQFitter()
-      psf_model = IntegratedGaussianPRF(sigma=sigma_psf)
+      mean, median, std = sigma_clipped_stats(data, sigma=3) 
 
-      photometry = DAOPhotPSFPhotometry(  crit_separation = 3,
-                                          threshold = mean + 5*std,
-                                          fwhm = fwhm,
-                                          psf_model=psf_model,
-                                          fitter=LevMarLSQFitter(),
-                                          fitshape=(5, 5))
+      psf_model         = FittableImageModel(self.image_g_sub)
+      self.psf_model    = psf_model 
 
-      result_tab = photometry(image=data)
+      photometry = DAOPhotPSFPhotometry(  crit_separation = 2,
+                                          threshold       = mean + sigma*std,
+                                          fwhm            = fwhm,
+                                          aperture_radius = 3,
+                                          psf_model       = psf_model,
+                                          fitter          = LevMarLSQFitter(),
+                                          fitshape        = (11, 11),
+                                          niters          = 1)
 
-      self.phot_table = result_tab
+      result_tab = photometry(image = data)
+      positions  = np.array([result_tab['x_fit'], result_tab['y_fit']]).T
+      coords     = np.array(wcs.pixel_to_world_values(positions))
+
+      result_tab['ra']      = coords[:,0]
+      result_tab['dec']     = coords[:,1]
+      result_tab['SNR']     = result_tab['flux_fit']/result_tab['flux_unc']
+
+      zero_p_flux           = 350228897.2910962*self.exp_time
+      result_tab['mag_out'] = -2.5*np.log10(result_tab['flux_fit']/zero_p_flux)
+      result_tab['mag_err'] = 1.082/result_tab['SNR']
+
+      self.header['ZP']     = zero_p_flux
+
+      self.phot_table       = result_tab
 
   def show_field(self,figsize=(10,10)):
     """
@@ -171,7 +203,8 @@ class Analyzer(object):
     return fig,ax
 
   def show_image(self, source = 'Digital', fig = None, ax = None, cmap = 'jet', 
-                 figsize = (15,10), download = False, show_wcs = True):
+                 figsize = (15,10), download = False, show_wcs = True,
+                 overlay_apertures = False):
     """
     Function for plotting the simulated field image
 
@@ -243,12 +276,23 @@ class Analyzer(object):
           return None
     
         img = ax.imshow(data,cmap=cmap , norm = norm)
+        ax.grid(False)
         plt.colorbar(img,ax = ax)
         ax.set_title(f'{source} \nRequested center : {self.name}')
         ax.grid(False)
+
+        if overlay_apertures and self.photometry_type == "Aper":
+          for aperture in self.aps:
+           if aperture is not None:
+              aperture.plot(ax=ax, color='red', lw=1.5)
+          for aperture in self.bags:
+           if aperture is not None:
+              aperture.plot(ax=ax, color='yellow', lw=1.5)
+     
         if download:
             fig.savefig(f"{source}.png", format = 'png')
         return fig,ax
+        
     else:
         print("Run Simulation")
         
@@ -426,3 +470,4 @@ class Analyzer(object):
       hdul.writeto(f'{name}',overwrite= True)
     else:
       print("Run Simulation")
+

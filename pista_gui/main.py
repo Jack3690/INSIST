@@ -108,8 +108,7 @@ class Ui(QtWidgets.QMainWindow):
         self.x_c.setText(f'{int(x)}')
         self.y_c.setText(f'{self.n_pix_value-int(y)}')
         self.canvas_img.figure.clear()
-        self.ax_img.cla()
-        self.ax_img.set_title('')
+        self.ax_img = self.canvas_img.figure.add_subplot(projection = self.sim.wcs)
         self.canvas_img.figure, self.ax_img = self.sim.show_image(self.output_select.currentText(),
                            fig = self.canvas_img.figure, ax = self.ax_img,
                            cmap = 'gray')

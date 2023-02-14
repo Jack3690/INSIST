@@ -436,7 +436,7 @@ class Imager(Analyzer):
 
   def __call__(self,det_params = None,n_stack = 1,stack_type = 'median',
                photometry = 'Aper', fwhm = 3, sigma = 3,
-               detect_sources = False,**kwargs):
+               detect_sources = False,ZP = None,**kwargs):
     """
      Parameters
      ----------
@@ -561,7 +561,7 @@ class Imager(Analyzer):
     super().__call__(df = self.img_df, wcs = self.wcs, 
                      data = self.digital.astype(float),
                      photometry = photometry, fwhm = fwhm,
-                     detect_sources = detect_sources)
+                     detect_sources = detect_sources,ZP = ZP)
 
 
 

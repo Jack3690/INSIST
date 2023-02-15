@@ -53,7 +53,14 @@ class Analyzer(object):
                           sigma,ZP)
 
   def aper_photometry(self,data,wcs,df, fwhm, detect,ZP):
-
+      # Calculate zero point
+      if ZP is None:
+        zero_p_flux = self.zero_flux + self.sky_bag_flux
+        zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
+        zero_p_flux *= self.gain*0.9499142715255932
+      else:
+        zero_p_flux = ZP
+        
       # if detect flag is set to True, detect sources in the image
       if detect:
 
@@ -65,14 +72,7 @@ class Analyzer(object):
         sources = daofind(data)
         # get the source positions
         positions   = np.transpose((sources['xcentroid'], sources['ycentroid'])) 
-        # Calculate zero point
-        if ZP is None:
-          zero_p_flux = self.zero_flux + self.sky_bag_flux
-          zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
-          zero_p_flux *= self.gain*0.9499142715255932
-        else:
-          zero_p_flux = ZP
-
+        
       else:
 
         # create SkyCoord object from ra and dec values in the dataframe
@@ -104,7 +104,7 @@ class Analyzer(object):
       # calculate signal to noise ratio
       phot_table['SNR']      = phot_table['flux'].value/ phot_table['flux_err'].value
 
-      if not detect:
+      if not detect and ZP is None and len(phot_table)>2:
         phot_table['mag_in']   = df['mag'].values 
         phot_table['ra']       = df['ra'].values
         phot_table['dec']      = df['dec'].values 
@@ -131,6 +131,12 @@ class Analyzer(object):
 
   def psf_photometry(self,data,wcs,df, fwhm, sigma, ZP):
 
+      if ZP is None:
+        zero_p_flux = self.zero_flux + self.sky_bag_flux
+        zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
+        zero_p_flux *= self.gain
+      else:
+        zero_p_flux = ZP
       mean, median, std = sigma_clipped_stats(data, sigma=3) 
 
       psf_model         = FittableImageModel(self.image_g_sub)
@@ -152,13 +158,6 @@ class Analyzer(object):
       result_tab['ra']      = coords[:,0]
       result_tab['dec']     = coords[:,1]
       result_tab['SNR']     = result_tab['flux_fit']/result_tab['flux_unc']
-
-      if ZP is None:
-        zero_p_flux = self.zero_flux + self.sky_bag_flux
-        zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
-        zero_p_flux *= self.gain
-      else:
-        zero_p_flux = ZP
 
       result_tab['mag_out'] = -2.5*np.log10(result_tab['flux_fit']/zero_p_flux)
       result_tab['mag_err'] = 1.082/result_tab['SNR']

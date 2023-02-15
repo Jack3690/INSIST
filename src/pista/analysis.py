@@ -195,18 +195,16 @@ class Analyzer(object):
 
     df = df[y_min_cut & y_max_cut]
 
-    ra_max  = df['ra'].max()
-    ra_min  = df['ra'].min()
-    dec_max = df['dec'].max()
-    dec_min = df['dec'].min()
-
-    fov_x  = np.round(ra_max - ra_min,5)
-    fov_y  = np.round(abs(dec_max - dec_min),5)
+    fov_x  = (self.n_x*self.pixel_scale)/3600
+    fov_y  = (self.n_y*self.pixel_scale)/3600
+    
+    fov_x = np.round(fov_x,4)
+    fov_y = np.round(fov_y,4)
 
     fig, ax = plt.subplots(1,1,figsize=figsize)
     ax.scatter(df['ra'],df['dec'],marker='.',color='black')
     ax.set_title(f"""Requested Center : {self.name} | {len(df)} sources
-    Fov(RA) : {fov_x} | Fov(Dec) : {fov_y} """)
+    Fov(RA) : {fov_x} deg | Fov(Dec) : {fov_y} deg """)
     ax.invert_xaxis()
     ax.set_xlabel('RA (Degrees)')
     ax.set_ylabel('Dec (Degrees)')

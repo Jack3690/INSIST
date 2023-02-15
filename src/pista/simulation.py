@@ -49,8 +49,8 @@ class Imager(Analyzer):
     """
     self.df    = df.copy()
     if coords is None:
-      self.ra  = (self.df['ra'].max()+self.df['ra'].min())/2
-      self.dec = (self.df['dec'].max()+self.df['dec'].min())/2
+      self.ra  = np.median(self.df.ra)
+      self.dec = np.median(self.df.dec)
     else:
       self.ra  = coords[0]
       self.dec = coords[1]

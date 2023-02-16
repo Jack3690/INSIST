@@ -21,11 +21,3 @@ pista.utils module
    :members:
    :undoc-members:
    :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: pista
-   :members:
-   :undoc-members:
-   :show-inheritance:

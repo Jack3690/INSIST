@@ -13,10 +13,11 @@ Initialization
   from astropy.table import Table
   data_path = Path(pis.__file__).parent.joinpath()
 
-.. image:: _static/ex1_spidx.png
-  :alt: output image
+.. text:: print(data_path)
+  :alt: output text
 
-  
+
 .. code-block:: python
+
   tab = Table.read(f'{data_path}/data/sample.fits')  # FITS Table
   df  = tab.to_pandas()             # PISTA requires pandas DataFrame

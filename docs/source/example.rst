@@ -7,7 +7,6 @@ Basic simulation using package data.
 Initialization
 ==============
 .. code-block:: python
-    :caption: Basic
     import pista as pis
     from pathlib import Path
     from astropy.table import Table
@@ -17,7 +16,6 @@ Initialization
 Source 
 ======
 .. code-block:: python
-    # Example FITS table
     tab = Table.read(f'{data_path}/data/sample.fits')  # FITS Table
     df  = tab.to_pandas()    # PISTA requires pandas DataFrame
 

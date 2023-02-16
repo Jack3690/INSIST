@@ -6,15 +6,13 @@ Basic simulation using package data.
 
 Initialization
 ==============
-.. code-block:: python
 
+.. jupyter-execute::
   import pista as pis
   from pathlib import Path
   from astropy.table import Table
   data_path = Path(pis.__file__).parent.joinpath()
   %matplotlib inline
-
-.. jupyter-execute::
 
   tab = Table.read(f'{data_path}/data/sample.fits')  # FITS Table
   df  = tab.to_pandas()             # PISTA requires pandas DataFrame

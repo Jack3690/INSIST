@@ -13,9 +13,8 @@ Initialization
   from astropy.table import Table
   data_path = Path(pis.__file__).parent.joinpath()
 
-.. text:: print(data_path)
-  :alt: output text
-
+Source
+======
 
 .. code-block:: python
 

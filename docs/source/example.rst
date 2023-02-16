@@ -13,8 +13,6 @@ Initialization
     from astropy.table import Table
     data_path = Path(pis.__file__).parent.joinpath()
  
-
-.. code-block:: python
 Source 
 ======
 .. code-block:: python
@@ -22,7 +20,6 @@ Source
     tab = Table.read(f'{data_path}/data/sample.fits')  # FITS Table
     df  = tab.to_pandas()    # PISTA requires pandas DataFrame
 
-.. code-block:: python
 Telescope parameters
 =====================
 .. code-block:: python
@@ -37,5 +34,4 @@ Telescope parameters
                                   f'{data_path}/data/INSIST/UV/QE.dat,1,100'
                                 ],                                
             } 
-.. code-block:: python
 

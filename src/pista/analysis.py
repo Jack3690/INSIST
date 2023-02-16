@@ -46,13 +46,13 @@ class Analyzer(object):
     """
     self.photometry_type = photometry
     if photometry == 'Aper':
-      self.aper_photometry(data, wcs, df, fwhm,
-                           detect_sources,ZP)
+      self.aper_photometry(data, wcs, df, fwhm, sigma, detect_sources,ZP)
     elif photometry == 'PSF':
-      self.psf_photometry(data, wcs, df, fwhm,
-                          sigma,ZP)
+      self.psf_photometry(data, wcs, df, fwhm, sigma,ZP)
 
-  def aper_photometry(self,data,wcs,df, fwhm, detect,ZP):
+  def aper_photometry(self,data,wcs,df, fwhm, sigma, detect,ZP):
+
+     # Calculate zero point
       if ZP is None:
         zero_p_flux = self.zero_flux + self.sky_bag_flux
         zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
@@ -64,14 +64,13 @@ class Analyzer(object):
       if detect:
 
         # calculate the mean, median and standard deviation of the data
-        mean, median, std = sigma_clipped_stats(data, sigma=3.0) 
+        mean, median, std = sigma_clipped_stats(data, sigma=sigma) 
         # create DAOStarFinder object to detect sources
-        daofind = DAOStarFinder(fwhm=fwhm, threshold = median + 3.*std)
+        daofind = DAOStarFinder(fwhm=fwhm, threshold = median + sigma*std)
         # detect sources in the image
         sources = daofind(data)
         # get the source positions
         positions   = np.transpose((sources['xcentroid'], sources['ycentroid'])) 
-        # Calculate zero point
 
       else:
 
@@ -79,7 +78,7 @@ class Analyzer(object):
         c          = SkyCoord(df['ra'], df['dec'],unit=u.deg)
         # convert the sky coordinates to pixel coordinates
         pix        = wcs.world_to_array_index(c)
-        positions   = [(i,j) for i,j in zip(pix[1],pix[0])]
+        positions  = [(i,j) for i,j in zip(pix[1],pix[0])]
       
       # create circular aperture object
       self.aps   = aper.CircularAperture(positions, r = fwhm)
@@ -202,12 +201,9 @@ class Analyzer(object):
     fov_y = np.round(fov_y,4)
 
     fig, ax = plt.subplots(1,1,figsize=figsize)
-    if 'ra' in df.keys():
-      x = df['ra']
-      y = df['dec']
-    else:
-      x = df['x']
-      y = df['y']    
+   
+    x = df['ra']
+    y = df['dec']   
     c = df['mag']
 
     img = ax.scatter(x,y, c = c, marker = marker, cmap = cmap)
@@ -216,49 +212,46 @@ class Analyzer(object):
     Fov(RA) : {fov_x} (deg) | Fov(Dec) : {fov_y} (deg)""")
     ax.invert_xaxis()
 
-    if 'ra' in df.keys():
-      ax.set_xlabel('RA (Degrees)')
-      ax.set_ylabel('Dec (Degrees)')
-    else:
-      ax.set_xlabel('x (pix)')
-      ax.set_ylabel('y (pix)')
+    ax.set_xlabel('RA (Degrees)')
+    ax.set_ylabel('Dec (Degrees)')
+
     return fig,ax
 
   def show_image(self, source = 'Digital', fig = None, ax = None, cmap = 'jet', 
                  figsize = (15,10), download = False, show_wcs = True,
-                 overlay_apertures = False):     
+                 overlay_apertures = False):
     """
-        Function for plotting the simulated field image
-    
-        Source: str,
-        Choose from
-                     'Digital' : Final digial image
-                     'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
-                     'Source'  : Source + Sky + Noises
-                     'Sky'     : Sky + shot_noise
-                     'DC'      : Dark Current + DNFP
-                     'QE'      : Quantum efficiency fluctuation across detector
-                     'Bias'    : Charge offset
-                     'PRNU'    : Photon Response Non-Uniformity
-                     'DNFP'    : Dark Noise Fixed Pattern
-                     'QN'      : Quantization Noise
-    
-    
-        fig : matplotlib.pyplot.figure
-              User defined figure
-        ax  : matplotlib.pyplot.axes
-              User defined axes
-        cmap : str,
-               matplotlib.pyplot colormap
-        figsize : tuple
-        download : bool
-        show_wcs : bool
-                   If true adds WCS projection to the image
-        Returns
-        -------
-        Image
-    
-        fig, ax
+    Function for plotting the simulated field image
+
+    Source: str,
+            Choose from
+                         'Digital' : Final digial image
+                         'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                         'Source'  : Source + Sky + Noises
+                         'Sky'     : Sky + shot_noise
+                         'DC'      : Dark Current + DNFP
+                         'QE'      : Quantum efficiency fluctuation across detector
+                         'Bias'    : Charge offset
+                         'PRNU'    : Photon Response Non-Uniformity
+                         'DNFP'    : Dark Noise Fixed Pattern
+                         'QN'      : Quantization Noise
+
+
+    fig : matplotlib.pyplot.figure
+          User defined figure
+    ax  : matplotlib.pyplot.axes
+          User defined axes
+    cmap : str,
+           matplotlib.pyplot colormap
+    figsize : tuple
+    download : bool
+    show_wcs : bool
+               If true adds WCS projection to the image
+    Returns
+    -------
+    Image
+
+    fig, ax
     """
     if np.all(self.image) !=None :
         if fig is None or ax is None:
@@ -322,7 +315,6 @@ class Analyzer(object):
     else:
         print("Run Simulation")
         
-        
   def show_hist(self, source = 'Digital',bins = None,
                  fig = None, ax = None,figsize=(15,8)):
     """
@@ -351,7 +343,6 @@ class Analyzer(object):
     ax  : matplotlib.pyplot.axes
           User defined axes
     figsize : tuple
-    
     """
    
     if np.all(self.image) !=None :
@@ -390,14 +381,14 @@ class Analyzer(object):
     else:
         print("Run Simulation")
 
-  def getImage(self,source = 'Digital'):    
+  def getImage(self,source = 'Digital'):
     """
-        Function of retrieving image array at different stages of simulation.
-    
-        Parameters
-        ----------
-    
-        Source: str,
+    Function of retrieving image array at different stages of simulation.
+
+    Parameters
+    ----------
+
+    Source: str,
         Choose from
                       'Digital' : Final digial image
                       'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
@@ -409,7 +400,6 @@ class Analyzer(object):
                       'PRNU'    : Photon Response Non-Uniformity
                       'DNFP'    : Dark Noise Fixed Pattern
                       'QN'      : Quantization Noise
-                      
     """
       
     if np.all(self.image) !=None :

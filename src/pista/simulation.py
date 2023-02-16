@@ -1,6 +1,5 @@
 from astropy.wcs import WCS
 from astropy.io import fits
-from scipy.constants import c
 import os
 from pathlib import Path
 import json
@@ -113,12 +112,12 @@ class Imager(Analyzer):
     
     if 'ra' not in self.df or 'dec' not in self.df.keys():
       if 'x' in self.df.keys() and 'y' in self.df.keys():
-        self.ra  = 10
-        self.dec = 10
+        print("Converting xy to ra-dec")
+        self.df = self.xy_to_radec(df,n_x,n_y, self.pixel_scale)
       else:
         raise Exception("'ra','dec','x',or 'y', columns not found in input dataframe ")
 
-    elif coords is None:
+    if coords is None:
       self.ra  = np.median(self.df.ra)
       self.dec = np.median(self.df.dec)
     else:
@@ -224,18 +223,11 @@ class Imager(Analyzer):
       wcs = self.create_wcs(n_x, n_y, self.ra,self.dec, 
                            self.pixel_scale, self.theta)
 
-
-      if 'x' not in self.df.keys():
-        c     = SkyCoord(df['ra'],df['dec'],unit=u.deg)
-        pix   = wcs.world_to_array_index(c)
-        
-        df['x'] = pix[1]
-        df['y'] = pix[0]
-
-      else:
-        df['x'] = df['x'] + x_left
-        df['y'] = df['y'] + y_left
-      
+      c       = SkyCoord(df['ra'],df['dec'],unit=u.deg)
+      pix     = wcs.world_to_array_index(c)       
+      df['x'] = pix[1]
+      df['y'] = pix[0]
+  
       # Cropping Dataframe based on FoV
       x_min_cut  = (df['x']>x_left) 
       x_max_cut  = (df['x']<x_right)
@@ -271,6 +263,20 @@ class Imager(Analyzer):
     if return_img:
       return self.image, self.wcs
 
+  def xy_to_radec(self,df,n_x,n_y,pixel_scale):
+
+    w           = WCS(naxis=2)
+    w.wcs.crpix = [n_x//2, n_y//2]
+    w.wcs.cdelt = np.array([-pixel_scale/3600,pixel_scale/3600])
+    w.wcs.crval = [10,10]
+    w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+
+    pos       = np.array([df.x, df.y])
+    coords    = np.array(w.pixel_to_world_values(pos.T))
+    df['ra']  = coords[:,0]
+    df['dec'] = coords[:,1]
+
+    return df
 
   def create_wcs(self,n_x, n_y, ra,dec,pixel_scale, theta = 0 ):
     """
@@ -459,7 +465,7 @@ class Imager(Analyzer):
 
 
   def __call__(self,det_params = None,n_stack = 1,stack_type = 'median',
-               photometry = 'Aper', fwhm = None, detect_sources = False,
+               photometry = 'Aper', fwhm = 3, sigma = 3, detect_sources = False,
                ZP = None, **kwargs):
     """
      Parameters
@@ -488,6 +494,32 @@ class Imager(Analyzer):
 
      stack_type : str, optional
                   Stacking method. The default is 'median'.
+              
+    photometry : str,
+                 Type of photometry to be employed
+                 Choose from
+                 'Aper' : Aperture photometry using Photutils
+                 'PSF'  : PSF photometry using DAOPHOT
+                 None   : Simulate without photometry
+    fwhm : float, pixels
+            During aperture photometry,
+            fwhm corresponds to FWHM circular aperture for aperture photometry
+            
+            During PSF photometry,
+            fwhm corresponds FWHM kernel to use for PSF photometry
+    sigma: float,
+            The numbers of standard deviations above which source has to be
+            detected
+    detect: bool,
+            If true, DARStarFinder is used to detect sources for aperture 
+            photometry
+            
+            if false, input catalog is used for getting positions of sources
+            for aperture photometry
+    ZP    : float,
+            zero point of the telescope.
+            Default None, zero point is calculated theoretically or using
+            input catalog
      
      
     Simulates field by taking dataframe as input by inserting sim patches in 
@@ -498,7 +530,7 @@ class Imager(Analyzer):
      Final image array after adding all layers of simulation
     
     """
-    self.sim_flag = True
+    
     if det_params is not None:
       
       self.det_params.update(det_params)
@@ -563,6 +595,7 @@ class Imager(Analyzer):
     self.wcs = self.create_wcs(self.n_x,self.n_y, 
                                self.ra,self.dec, self.pixel_scale, self.theta)
     
+    self.sim_flag = True
     # Filtering out sources within Image
     x_left  = 0
     x_right = self.n_x
@@ -571,7 +604,7 @@ class Imager(Analyzer):
 
     self.img_df = self.init_df(df = self.sim_df.copy(), 
                                 n_x = self.n_x    , n_y = self.n_y,
-                                x_left = x_left   , x_right= x_right,
+                                x_left = x_left   , x_right = x_right,
                                 y_left = y_left   , y_right = y_right)
 
     self.header = self.wcs.to_header()
@@ -584,8 +617,9 @@ class Imager(Analyzer):
 
     super().__call__(df = self.img_df, wcs = self.wcs, 
                      data = self.digital.astype(float),
-                     photometry = photometry, fwhm = fwhm,
+                     photometry = photometry, fwhm = fwhm, sigma = sigma,
                      detect_sources = detect_sources, ZP = ZP)
+
 
 
 

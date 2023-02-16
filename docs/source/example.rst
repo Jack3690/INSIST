@@ -1,8 +1,9 @@
-******
+**********
 Quickstart
-******
+**********
 
-Basic simulation using package data.
+Basic simulation using package data. PISTA package data includes filter profiles and PSF profiles for INSIST. 
+This can be utilized for simulating images using INSIST specifications.
 
 Initialization
 ==============

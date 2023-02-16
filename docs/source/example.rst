@@ -12,6 +12,7 @@ Initialization
   import pista as pis
   from pathlib import Path
   from astropy.table import Table
+  import matplotlib.pyplot as plt
   data_path = Path(pis.__file__).parent.joinpath()
   %matplotlib inline
 

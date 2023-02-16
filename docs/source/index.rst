@@ -22,6 +22,7 @@ Installation
    :caption: Contents:
    
    pista
+   example
 
 Indices and tables
 ==================

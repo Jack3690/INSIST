@@ -12,7 +12,7 @@ Initialization
   from pathlib import Path
   from astropy.table import Table
   data_path = Path(pis.__file__).parent.joinpath()
-
+.. output
 Source
 ======
 .. code-block:: python

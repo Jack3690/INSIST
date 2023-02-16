@@ -12,19 +12,12 @@ Initialization
   from pathlib import Path
   from astropy.table import Table
   data_path = Path(pis.__file__).parent.joinpath()
+  %matplotlib inline
 
-Source
-======
-
-.. code-block:: python
+.. jupyter-execute::
 
   tab = Table.read(f'{data_path}/data/sample.fits')  # FITS Table
   df  = tab.to_pandas()             # PISTA requires pandas DataFrame
-
-Telescope Parameters
-====================
-
-.. code-block:: python
 
   tel_params = {
                   'aperture'       : 100,
@@ -37,10 +30,8 @@ Telescope Parameters
                                       ],                                
                 } 
 
-Initializing Imager Object
-==========================
 
-.. jupyter-execute::
+
 
   sim = pis.Imager(df = df,tel_params = tel_params, n_x = 500, n_y = 500, exp_time = 2400)
   sim.show_field()

@@ -40,7 +40,7 @@ Telescope Parameters
 Initializing Imager Object
 ==========================
 
-.. jupyter-execute::: python
+.. jupyter-execute::
 
   sim = pis.Imager(df = df,tel_params = tel_params, n_x = 500, n_y = 500, exp_time = 2400)
   sim.show_field()

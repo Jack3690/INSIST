@@ -53,13 +53,13 @@ Detector parameters
 
 .. jupyter-execute::
 
-det_params = {  'shot_noise' :  'Gaussian',
-                'G1'         :  1,
-                'PRNU_frac'  :  0.25/100,
-                'RN'         :  3,
-                'T'          :  218,        
-                'DN'         :  0.01/100     
-              }
+  det_params = {  'shot_noise' :  'Gaussian',
+                  'G1'         :  1,
+                  'PRNU_frac'  :  0.25/100,
+                  'RN'         :  3,
+                  'T'          :  218,        
+                  'DN'         :  0.01/100     
+                }
 
 Simulate Image
 ==============

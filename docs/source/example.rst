@@ -13,6 +13,8 @@ Initialization
   from pathlib import Path
   from astropy.table import Table
   import matplotlib.pyplot as plt
+  plt.rcParams.update({'font.size': 10})
+  
   data_path = Path(pis.__file__).parent.joinpath()
   %matplotlib inline
 
@@ -46,4 +48,4 @@ Initializing Imager object
   
   sim = pis.Imager(df = df,tel_params = tel_params, n_x = 500, n_y = 500, exp_time = 2400)
   sim.show_field()
-  plt.show()
+  

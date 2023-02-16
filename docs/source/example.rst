@@ -67,6 +67,3 @@ Simulate Image
 
   sim(det_params = det_params, photometry = 'Aper')
   sim.show_image()
-
-.. jupyter-execute::
-  sim.phot_table

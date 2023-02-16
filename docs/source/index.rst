@@ -10,6 +10,9 @@ A python-based resolved stellar population image simulation package developed as
 
 Getting started
 ===============
+
+Installation
+#############
 .. code-block:: bash
 
    $ pip install insist-pista

@@ -1,6 +1,6 @@
-******
+**********
 Quickstart
-******
+**********
 
 Basic simulation using package data.
 

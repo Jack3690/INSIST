@@ -1,4 +1,4 @@
-pista.analysis module
+analysis module
 ---------------------
 
 .. automodule:: pista.analysis
@@ -6,7 +6,7 @@ pista.analysis module
    :undoc-members:
    :show-inheritance:
 
-pista.simulation module
+simulation module
 -----------------------
 
 .. automodule:: pista.simulation
@@ -14,7 +14,7 @@ pista.simulation module
    :undoc-members:
    :show-inheritance:
 
-pista.utils module
+utils module
 ------------------
 
 .. automodule:: pista.utils

@@ -53,14 +53,13 @@ class Analyzer(object):
                           sigma,ZP)
 
   def aper_photometry(self,data,wcs,df, fwhm, detect,ZP):
-      # Calculate zero point
       if ZP is None:
         zero_p_flux = self.zero_flux + self.sky_bag_flux
         zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
         zero_p_flux *= self.gain*0.9499142715255932
       else:
         zero_p_flux = ZP
-        
+
       # if detect flag is set to True, detect sources in the image
       if detect:
 
@@ -72,7 +71,8 @@ class Analyzer(object):
         sources = daofind(data)
         # get the source positions
         positions   = np.transpose((sources['xcentroid'], sources['ycentroid'])) 
-        
+        # Calculate zero point
+
       else:
 
         # create SkyCoord object from ra and dec values in the dataframe
@@ -104,7 +104,7 @@ class Analyzer(object):
       # calculate signal to noise ratio
       phot_table['SNR']      = phot_table['flux'].value/ phot_table['flux_err'].value
 
-      if not detect and ZP is None and len(phot_table)>2:
+      if not detect and ZP is None and len(phot_table) > 2:
         phot_table['mag_in']   = df['mag'].values 
         phot_table['ra']       = df['ra'].values
         phot_table['dec']      = df['dec'].values 
@@ -131,12 +131,6 @@ class Analyzer(object):
 
   def psf_photometry(self,data,wcs,df, fwhm, sigma, ZP):
 
-      if ZP is None:
-        zero_p_flux = self.zero_flux + self.sky_bag_flux
-        zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
-        zero_p_flux *= self.gain
-      else:
-        zero_p_flux = ZP
       mean, median, std = sigma_clipped_stats(data, sigma=3) 
 
       psf_model         = FittableImageModel(self.image_g_sub)
@@ -159,6 +153,13 @@ class Analyzer(object):
       result_tab['dec']     = coords[:,1]
       result_tab['SNR']     = result_tab['flux_fit']/result_tab['flux_unc']
 
+      if ZP is None:
+        zero_p_flux = self.zero_flux + self.sky_bag_flux
+        zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
+        zero_p_flux *= self.gain
+      else:
+        zero_p_flux = ZP
+
       result_tab['mag_out'] = -2.5*np.log10(result_tab['flux_fit']/zero_p_flux)
       result_tab['mag_err'] = 1.082/result_tab['SNR']
 
@@ -166,7 +167,7 @@ class Analyzer(object):
 
       self.phot_table       = result_tab
 
-  def show_field(self,figsize=(10,10)):
+  def show_field(self,figsize=(10,10), marker = '.', cmap = 'jet'):
     """
     Function for creating a scatter plot of sources within the FoV
     
@@ -189,61 +190,75 @@ class Analyzer(object):
 
     df        = self.df[ x_min_cut & x_max_cut ]
 
-    y_min_cut = (self.df['y']>self.n_pix_sub - 1) 
-    y_max_cut = (self.df['y']<self.n_x_sim - self.n_pix_sub -1)
+    y_min_cut = (self.df['y'] > self.n_pix_sub - 1) 
+    y_max_cut = (self.df['y'] < self.n_x_sim - self.n_pix_sub -1)
 
     df = df[y_min_cut & y_max_cut]
 
     fov_x  = (self.n_x*self.pixel_scale)/3600
     fov_y  = (self.n_y*self.pixel_scale)/3600
-    
+
     fov_x = np.round(fov_x,4)
     fov_y = np.round(fov_y,4)
 
     fig, ax = plt.subplots(1,1,figsize=figsize)
-    ax.scatter(df['ra'],df['dec'],marker='.',color='black')
+    if 'ra' in df.keys():
+      x = df['ra']
+      y = df['dec']
+    else:
+      x = df['x']
+      y = df['y']    
+    c = df['mag']
+
+    img = ax.scatter(x,y, c = c, marker = marker, cmap = cmap)
+    plt.colorbar(img)
     ax.set_title(f"""Requested Center : {self.name} | {len(df)} sources
-    Fov(RA) : {fov_x} deg | Fov(Dec) : {fov_y} deg """)
+    Fov(RA) : {fov_x} (deg) | Fov(Dec) : {fov_y} (deg)""")
     ax.invert_xaxis()
-    ax.set_xlabel('RA (Degrees)')
-    ax.set_ylabel('Dec (Degrees)')
+
+    if 'ra' in df.keys():
+      ax.set_xlabel('RA (Degrees)')
+      ax.set_ylabel('Dec (Degrees)')
+    else:
+      ax.set_xlabel('x (pix)')
+      ax.set_ylabel('y (pix)')
     return fig,ax
 
   def show_image(self, source = 'Digital', fig = None, ax = None, cmap = 'jet', 
                  figsize = (15,10), download = False, show_wcs = True,
-                 overlay_apertures = False):
+                 overlay_apertures = False):     
     """
-    Function for plotting the simulated field image
-
-    Source: str,
-            Choose from
-                         'Digital' : Final digial image
-                         'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
-                         'Source'  : Source + Sky + Noises
-                         'Sky'     : Sky + shot_noise
-                         'DC'      : Dark Current + DNFP
-                         'QE'      : Quantum efficiency fluctuation across detector
-                         'Bias'    : Charge offset
-                         'PRNU'    : Photon Response Non-Uniformity
-                         'DNFP'    : Dark Noise Fixed Pattern
-                         'QN'      : Quantization Noise
-
-
-    fig : matplotlib.pyplot.figure
-          User defined figure
-    ax  : matplotlib.pyplot.axes
-          User defined axes
-    cmap : str,
-           matplotlib.pyplot colormap
-    figsize : tuple
-    download : bool
-    show_wcs : bool
-               If true adds WCS projection to the image
-    Returns
-    -------
-    Image
-
-    fig, ax
+        Function for plotting the simulated field image
+    
+        Source: str,
+        Choose from
+                     'Digital' : Final digial image
+                     'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                     'Source'  : Source + Sky + Noises
+                     'Sky'     : Sky + shot_noise
+                     'DC'      : Dark Current + DNFP
+                     'QE'      : Quantum efficiency fluctuation across detector
+                     'Bias'    : Charge offset
+                     'PRNU'    : Photon Response Non-Uniformity
+                     'DNFP'    : Dark Noise Fixed Pattern
+                     'QN'      : Quantization Noise
+    
+    
+        fig : matplotlib.pyplot.figure
+              User defined figure
+        ax  : matplotlib.pyplot.axes
+              User defined axes
+        cmap : str,
+               matplotlib.pyplot colormap
+        figsize : tuple
+        download : bool
+        show_wcs : bool
+                   If true adds WCS projection to the image
+        Returns
+        -------
+        Image
+    
+        fig, ax
     """
     if np.all(self.image) !=None :
         if fig is None or ax is None:
@@ -281,7 +296,11 @@ class Analyzer(object):
         else:
           print("Invalid Input")
           return None
-    
+
+        if data.min()<0:
+          print('Negative values in image. Increase Bias')
+          data += data.min()
+
         img = ax.imshow(data,cmap=cmap , norm = norm)
         ax.grid(False)
         plt.colorbar(img,ax = ax)
@@ -302,6 +321,7 @@ class Analyzer(object):
         
     else:
         print("Run Simulation")
+        
         
   def show_hist(self, source = 'Digital',bins = None,
                  fig = None, ax = None,figsize=(15,8)):
@@ -331,6 +351,7 @@ class Analyzer(object):
     ax  : matplotlib.pyplot.axes
           User defined axes
     figsize : tuple
+    
     """
    
     if np.all(self.image) !=None :
@@ -369,14 +390,14 @@ class Analyzer(object):
     else:
         print("Run Simulation")
 
-  def getImage(self,source = 'Digital'):
+  def getImage(self,source = 'Digital'):    
     """
-    Function of retrieving image array at different stages of simulation.
-
-    Parameters
-    ----------
-
-    Source: str,
+        Function of retrieving image array at different stages of simulation.
+    
+        Parameters
+        ----------
+    
+        Source: str,
         Choose from
                       'Digital' : Final digial image
                       'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
@@ -388,6 +409,7 @@ class Analyzer(object):
                       'PRNU'    : Photon Response Non-Uniformity
                       'DNFP'    : Dark Noise Fixed Pattern
                       'QN'      : Quantization Noise
+                      
     """
       
     if np.all(self.image) !=None :
@@ -477,5 +499,6 @@ class Analyzer(object):
       hdul.writeto(f'{name}',overwrite= True)
     else:
       print("Run Simulation")
+
 
 

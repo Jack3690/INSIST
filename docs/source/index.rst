@@ -1,7 +1,8 @@
-.. PISTA documentation master file, created by
-   sphinx-quickstart on Mon Jan 23 20:34:21 2023.
+.. pista documentation master file, created by
+   sphinx-quickstart on Thu Feb 16 17:23:12 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
+
 ***********************************************
 Python Image Simulation and Testing Application
 ***********************************************
@@ -18,8 +19,6 @@ Getting started
    :caption: Contents:
    
    pista
-   
-   
 
 Indices and tables
 ==================

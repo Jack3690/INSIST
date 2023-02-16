@@ -1,11 +1,6 @@
-pista.simulation module
------------------------
+PISTA package
+=============
 
-.. automodule:: pista.simulation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   
 pista.analysis module
 ---------------------
 
@@ -14,11 +9,26 @@ pista.analysis module
    :undoc-members:
    :show-inheritance:
 
+pista.simulation module
+-----------------------
+
+.. automodule:: pista.simulation
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 pista.utils module
 ------------------
 
 .. automodule:: pista.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: pista
    :members:
    :undoc-members:
    :show-inheritance:

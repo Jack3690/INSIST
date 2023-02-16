@@ -1,7 +1,6 @@
 from astropy.wcs import WCS
 from astropy.io import fits
 from scipy.constants import c
-from scipy.signal import fftconvolve
 import os
 from pathlib import Path
 import json
@@ -47,15 +46,6 @@ class Imager(Analyzer):
                Exposure time in seconds 
 
     """
-    self.df    = df.copy()
-    if coords is None:
-      self.ra  = np.median(self.df.ra)
-      self.dec = np.median(self.df.dec)
-    else:
-      self.ra  = coords[0]
-      self.dec = coords[1]
-    
-    self.name = f" RA : {np.round(self.ra,3)} degrees, Dec : {np.round(self.dec,3)} degrees"
 
     # Flags
     self.shot_noise  = True
@@ -67,7 +57,7 @@ class Imager(Analyzer):
     self.QN          = True
     self.cosmic_rays = False
 
-    # Parameters
+    # Telescope and Detector Parameters
     self.tel_params = {'aperture'       : 100, # cm
                        'pixel_scale'    : 0.1,
                        'psf_file'       :f'{data_path}/data/PSF/INSIST/on_axis_hcipy.npy',
@@ -98,11 +88,13 @@ class Imager(Analyzer):
                    }
     self.det_params.update(kwargs)
 
+    self.df    = df.dropna().copy()
     self.n_x  = n_x
     self.n_y  = n_y
     self.pixel_scale    = self.tel_params['pixel_scale']
     self.theta          = self.tel_params['theta']*np.pi/180
 
+    
     self.response_funcs = self.tel_params['response_funcs']
     self.coeffs         = self.tel_params['coeffs']
 
@@ -114,6 +106,28 @@ class Imager(Analyzer):
     self.sim_run        = False 
     
     self.psf_file       = self.tel_params['psf_file']
+
+    # Input Dataframe
+    if 'mag' not in self.df.keys():
+      raise Exception("'mag' column not found input dataframe")
+    
+    if 'ra' not in self.df or 'dec' not in self.df.keys():
+      if 'x' in self.df.keys() and 'y' in self.df.keys():
+        self.ra  = 10
+        self.dec = 10
+      else:
+        raise Exception("'ra','dec','x',or 'y', columns not found in input dataframe ")
+
+    elif coords is None:
+      self.ra  = np.median(self.df.ra)
+      self.dec = np.median(self.df.dec)
+    else:
+      self.ra  = coords[0]
+      self.dec = coords[1]
+
+    ra_n  = np.round(self.ra,3)
+    dec_n = np.round(self.dec,3)
+    self.name = f" RA : {ra_n} degrees, Dec : {dec_n} degrees"
 
     if self.df is not None:
         self.calc_zp(plot = plot)
@@ -129,6 +143,8 @@ class Imager(Analyzer):
                                    n_x = self.n_x_sim, n_y = self.n_y_sim,
                                    x_left = x_left   , x_right= x_right,
                                    y_left = y_left   , y_right = y_right)
+        if len(self.sim_df)<1:
+          raise Exception("Not Enough sources inside FoV. Increase n_x and n_y")
     else:
         print("df cannot be None")
 
@@ -154,6 +170,7 @@ class Imager(Analyzer):
         self.int_flux    = int_flux
         self.W_eff       = W_eff
         self.int_flux_Jy = int_flux_Jy
+        self.flux_ratio  = flux_ratio
         
         self.photons     = 1.51e3*self.int_flux_Jy*(W_eff/lambda_phot)*flux_ratio
         self.zero_flux   = self.exp_time*self.tel_area*self.photons*self.coeffs
@@ -207,11 +224,17 @@ class Imager(Analyzer):
       wcs = self.create_wcs(n_x, n_y, self.ra,self.dec, 
                            self.pixel_scale, self.theta)
 
-      c     = SkyCoord(df['ra'],df['dec'],unit=u.deg)
-      pix   = wcs.world_to_array_index(c)
-      
-      df['x'] = pix[1]
-      df['y'] = pix[0]
+
+      if 'x' not in self.df.keys():
+        c     = SkyCoord(df['ra'],df['dec'],unit=u.deg)
+        pix   = wcs.world_to_array_index(c)
+        
+        df['x'] = pix[1]
+        df['y'] = pix[0]
+
+      else:
+        df['x'] = df['x'] + x_left
+        df['y'] = df['y'] + y_left
       
       # Cropping Dataframe based on FoV
       x_min_cut  = (df['x']>x_left) 
@@ -247,6 +270,7 @@ class Imager(Analyzer):
                                     self.theta)
     if return_img:
       return self.image, self.wcs
+
 
   def create_wcs(self,n_x, n_y, ra,dec,pixel_scale, theta = 0 ):
     """
@@ -435,8 +459,8 @@ class Imager(Analyzer):
 
 
   def __call__(self,det_params = None,n_stack = 1,stack_type = 'median',
-               photometry = 'Aper', fwhm = 3, sigma = 3,
-               detect_sources = False,ZP = None,**kwargs):
+               photometry = 'Aper', fwhm = None, detect_sources = False,
+               ZP = None, **kwargs):
     """
      Parameters
      ----------
@@ -561,7 +585,8 @@ class Imager(Analyzer):
     super().__call__(df = self.img_df, wcs = self.wcs, 
                      data = self.digital.astype(float),
                      photometry = photometry, fwhm = fwhm,
-                     detect_sources = detect_sources,ZP = ZP)
+                     detect_sources = detect_sources, ZP = ZP)
+
 
 
 

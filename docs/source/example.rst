@@ -15,3 +15,6 @@ Initialization
 
 Source
 ======
+.. code-block:: python
+  tab = Table.read(f'{data_path}/data/sample.fits')  # FITS Table
+  df  = tab.to_pandas()             # PISTA requires pandas DataFrame

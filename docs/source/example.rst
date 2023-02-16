@@ -40,7 +40,7 @@ Telescope parameters
                                       ],                                
                 } 
 
-Initializing Imager object
+Initialize Imager object
 ==========================
 
 .. jupyter-execute::
@@ -48,3 +48,25 @@ Initializing Imager object
   sim = pis.Imager(df = df,tel_params = tel_params, n_x = 500, n_y = 500, exp_time = 2400)
   sim.show_field();
   
+Detector parameters
+===================
+
+.. jupyter-execute::
+
+det_params = {  'shot_noise' :  'Gaussian',
+                'G1'         :  1,
+                'PRNU_frac'  :  0.25/100,
+                'RN'         :  3,
+                'T'          :  218,        
+                'DN'         :  0.01/100     
+              }
+
+Simulate Image
+==============
+.. jupyter-execute::
+
+  sim(det_params = det_params, photometry = 'Aper')
+  sim.show_image()
+
+.. jupyter-execute::
+  sim.phot_table

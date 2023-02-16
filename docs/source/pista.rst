@@ -1,6 +1,3 @@
-PISTA package
-=============
-
 pista.analysis module
 ---------------------
 

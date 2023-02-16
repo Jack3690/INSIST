@@ -25,6 +25,7 @@ Telescope Parameters
 ====================
 
 .. code-block:: python
+  
   tel_params ={
             'aperture'       : 100,
             'pixel_scale'    : 0.1,

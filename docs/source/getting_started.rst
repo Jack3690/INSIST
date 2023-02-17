@@ -18,8 +18,7 @@ Installing the Development Version
 Python Dependencies
 ===================
 
-- 'python <https://www.python.org/>' >=3.6
-- 'numpy <https://numpy.org/>'_>=1.20.1
-- 'pandas <https://pandas.pydata.org/>'_>=1.2.4
+- 'python <https://www.python.org/>'_ >=3.6
+
  
 

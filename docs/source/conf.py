@@ -23,11 +23,11 @@ release = '1.0.24'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['sphinx.ext.napoleon',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.coverage',
-    'sphinx.ext.autosectionlabel',
-    'jupyter_sphinx',
+	    'sphinx.ext.autodoc',
+	    'sphinx.ext.viewcode',
+	    'sphinx.ext.coverage',
+	    'sphinx.ext.autosectionlabel',
+	    'jupyter_sphinx',
 ]
 templates_path = ['_templates']
 exclude_patterns = []

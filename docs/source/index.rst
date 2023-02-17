@@ -9,17 +9,17 @@ PISTA: Python Image Simulation and Testing Application
 A python-based resolved stellar population image simulation package developed as part of the Indian Spectroscopic and Imaging Space Telescope (INSIST) project.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Getting Started:
    
    getting_started
+   example
    
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Modules:
    
    pista
-   example
 
 Indices and tables
 ==================

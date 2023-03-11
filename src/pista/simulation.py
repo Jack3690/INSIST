@@ -13,8 +13,8 @@ data_path = Path(__file__).parent.joinpath()
 class Imager(Analyzer):
   def __init__(self, df, coords = None, tel_params = None, n_x = 1000, 
                n_y = 1000, exp_time = 100, plot = False,**kwargs):  
-    super().__init__() 
-    """Image simulation using Source catalog. Class which simulates the field 
+    """
+    Image simulation using Source catalog. Class which simulates the field 
     
     and creates image
 
@@ -45,6 +45,8 @@ class Imager(Analyzer):
                Exposure time in seconds 
 
     """
+    Analyzer.__init__(self) 
+    
 
     # Flags
     self.shot_noise  = True
@@ -55,6 +57,14 @@ class Imager(Analyzer):
     self.DNFP        = True
     self.QN          = True
     self.cosmic_rays = False
+    
+    self.user_profiles = {'sky' : None,
+                          'PRNU': None,
+                          'QE'  : None,
+                          'DC'  : None,
+                          'DNFP': None,
+                          'Bias': None,
+                        }
 
     # Telescope and Detector Parameters
     self.tel_params = {'aperture'       : 100, # cm
@@ -318,37 +328,88 @@ class Imager(Analyzer):
     n_x = self.n_y 
     n_y = self.n_x
 
+    if self.sky:
+      if self.user_profiles['sky'] is not None:
+        if self.user_profiles['sky'].shape == (n_x,n_y):
+          self.sky_photoelec = self.user_profiles['sky']
+        else:
+          raise Exception(f"""User defined sky array shape: {self.user_profiles['sky'].shape}
+          is not same as detector shape {(n_x,n_y)}""")
+
+      else: 
+        self.sky_photoelec = self.compute_shot_noise(self.sky_bag_flux,
+                                                      'Poisson')  
+    else:
+      self.sky_photoelec = 0
+
     if self.QE:
+      if self.user_profiles['QE'] is not None:
+        if self.user_profiles['QE'].shape == (n_x,n_y):
+          self.qe_array = self.user_profiles['QE']
+        else:
+          raise Exception(f"""User defined QE array shape: {self.user_profiles['QE'].shape}
+          is not same as detector shape {(n_x,n_y)}""")
+      else:
         self.qe_array =  np.random.normal(loc=0, 
                                           scale=self.det_params['qe_sigma'],
-                                          size=(n_x, n_y))
+                                            size=(n_x, n_y))
     else:
       self.qe_array = 0
 
-    self.bias_array =  np.random.normal(loc=self.det_params['bias'], 
-                                      scale=self.det_params['RN'],
-                                      size=(n_x, n_y))
+    if self.user_profiles['Bias'] is not None:
+      if self.user_profiles['Bias'].shape == (n_x,n_y):
+        self.bias_array = self.user_profiles['Bias']
+      else:
+        raise Exception(f"""User defined Bias array shape: {self.user_profiles['Bias'].shape}
+        is not same as detector shape {(n_x,n_y)}""")
+    else:
+      self.bias_array =  np.random.normal(loc=self.det_params['bias'], 
+                                        scale=self.det_params['RN'],
+                                        size=(n_x, n_y))
     if self.PRNU:
-
-      self.PRNU_array =  np.random.normal(loc=0, 
+      if self.user_profiles['PRNU'] is not None:
+        if self.user_profiles['PRNU'].shape == (n_x,n_y):
+          self.PRNU_array = self.user_profiles['PRNU']
+        else:
+          raise Exception(f"""User defined PRNU array shape: {self.user_profiles['PRNU'].shape}
+          is not same as detector shape {(n_x,n_y)}""")
+      else:  
+        self.PRNU_array =  np.random.normal(loc=0, 
                                         scale = self.det_params['PRNU_frac'],
                                         size=(n_x, n_y))
     else:
        self.PRNU_array = 0
        
     if self.DC:
-      self.DR = self.dark_current(self.det_params['T'], self.det_params['DFM'], 
-                                  self.det_params['pixel_area'])
-
-      self.DC_array = np.random.normal(loc = self.DR*self.exp_time, 
-                                          scale = np.sqrt(self.DR*self.exp_time),
-                                          size=(n_x, n_y))
+      if self.user_profiles['DC'] is not None:
+        if self.user_profiles['DC'].shape == (n_x,n_y):
+          self.DR = self.user_profiles['DC']
+          self.DC_array = self.user_profiles['DC']*self.exp_time
+        else:
+          raise Exception(f"""User defined DC array shape: {self.user_profiles['DC'].shape}
+          is not same as detector shape {(n_x,n_y)}""")
+      else:   
+        self.DR = self.dark_current(self.det_params['T'], self.det_params['DFM'], 
+                                    self.det_params['pixel_area'])
+        np.random.seed(369)
+        self.DC_array = np.random.normal(loc = self.DR*self.exp_time, 
+                                            scale = np.sqrt(self.DR*self.exp_time),
+                                            size=(n_x, n_y))
     else: 
         self.DC_array = 0
+        self.DR       = 0
     if self.DNFP and self.DC:
-      self.DNFP_array =  np.random.lognormal(mean= 0, 
-                                    sigma = self.exp_time*self.DR*self.det_params['DN'],
-                                    size=(n_x, n_y))
+      if self.user_profiles['DNFP'] is not None:
+        if self.user_profiles['DNFP'].shape == (n_x,n_y):
+          self.DNFP_array = self.user_profiles['DNFP']*self.exp_time
+        else:
+          raise Exception(f"""User defined DNFP array shape: {self.user_profiles['DNFP'].shape}
+          is not same as detector shape {(n_x,n_y)}""")
+      else:
+        np.random.seed(369)
+        self.DNFP_array =  np.random.lognormal(mean= 0, 
+                                      sigma = self.exp_time*self.DR*self.det_params['DN'],
+                                      size=(n_x, n_y))
       self.DC_array*=(1 + self.DNFP_array)
     else:
         self.DNFP_array = 0
@@ -360,6 +421,7 @@ class Imager(Analyzer):
       self.QN_array = self.QN_value*np.random.randint(-1,2,size = (n_x,n_y))
     else :
       self.QN_array = 0
+
 
   def dark_current(self,T, DFM, pixel_area):
     """
@@ -538,39 +600,40 @@ class Imager(Analyzer):
                          self.det_params['bit_res'])/self.det_params['FWC']
 
     digital_stack = []
-    self.compute_coeff_arrays()
     
     for i in range(n_stack):
 
       self.init_image_array()
-      
-      self.source_photons   = self.generate_photons(self.image, self.n_pix_sub,
-                                                    self.sim_df)
-      
+      self.compute_coeff_arrays()
+
+      # Source photoelectrons
+      self.source_photoelec = self.generate_photons(self.image, self.n_pix_sub, 
+                                                      self.sim_df)   
+      # Sky photoelectrons                                              
+      self.light_array = self.source_photoelec + self.sky_photoelec
+
+      # Source shot_noise
       if self.shot_noise:
-         self.source_photons  = self.compute_shot_noise(self.source_photons 
+         self.light_array = self.compute_shot_noise(self.light_array 
                               ,type_ = self.det_params['shot_noise'])
- 
-      self.source_photoelec = self.source_photons*(1+self.qe_array)
+      
+      # QE pixel to pixel variation
+      self.light_array    = self.light_array*(1+self.qe_array)    
 
-      if self.sky:
-        self.sky_photoelec = self.compute_shot_noise(self.sky_bag_flux,
-                                                     'Gaussian')*(1+ self.qe_array)
-        
-        self.light_array = self.source_photoelec +  self.sky_photoelec
-      else:
-        self.light_array = self.source_photoelec 
-
+      # PRNU. Might be degenrate with QE
       if self.PRNU:
         self.light_array*=(1+self.PRNU_array)
 
+      # Dark Current
       if self.DC:
         self.photoelec_array = self.light_array + self.DC_array
       else:
-        self.photoelec_array  = self.light_array
+        self.photoelec_array = self.light_array
 
+      # Addition of Quantization error, Bias and Noise floor
       self.charge = self.photoelec_array + self.QN_array + self.det_params['NF'] + self.bias_array 
       
+      # Photoelec to ADUs
       self.digital = (self.charge*self.gain).astype(int)
 
       # Full well condition
@@ -615,7 +678,7 @@ class Imager(Analyzer):
     self.header['DR']   = self.DR
     self.header['NF']   = self.det_params['NF']
 
-    super().__call__(df = self.img_df, wcs = self.wcs, 
+    Analyzer.__call__(self,df = self.img_df, wcs = self.wcs, 
                      data = self.digital.astype(float),
                      photometry = photometry, fwhm = fwhm, sigma = sigma,
                      detect_sources = detect_sources, ZP = ZP)

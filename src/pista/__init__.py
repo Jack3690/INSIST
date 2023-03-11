@@ -1,4 +1,4 @@
-__version__ = "1.0.0"
+__version__ = "1.0.251"
 __author__ = 'Avinash CK'
 __credits__ = 'Indian Institute of Astrophysics'
 

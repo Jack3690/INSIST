@@ -713,8 +713,8 @@ class Ui(QtWidgets.QMainWindow):
             
             ax = self.canvas_panel.figure.add_subplot(g[1,1])
             
-            x = sim.source_photons.ravel()
-            y = x/np.sqrt(sim.source_photons).ravel()
+            x = sim.source_photoelec.ravel()
+            y = x/np.sqrt(sim.source_photoelec).ravel()
             x = np.where(x==0,np.nan,x)
             ax.plot(x,y,'.', color ='red')
             
@@ -811,8 +811,8 @@ class Ui(QtWidgets.QMainWindow):
             
             ax = self.canvas_panel.figure.add_subplot(g[1,1])
             
-            x = sim.source_photons.ravel()
-            y = x/np.sqrt(sim.source_photons).ravel()
+            x = sim.source_photoelec.ravel()
+            y = x/np.sqrt(sim.source_photoelec).ravel()
             x = np.where(x==0,np.nan,x)
             ax.plot(x,y,'.', color ='red')
             if self.DC.isChecked():

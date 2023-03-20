@@ -1,3 +1,5 @@
+"""This modules contains classes for simulating Imaging, Mosaicing, and
+    Spectroscopic modes"""
 from astropy.wcs import WCS
 from astropy.io import fits
 import os

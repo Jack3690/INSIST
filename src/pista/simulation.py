@@ -6,15 +6,16 @@ import json
 import requests
 from .utils import bandpass
 from .analysis import *
-
+import cv2
 
 data_path = Path(__file__).parent.joinpath()
 
 class Imager(Analyzer):
-  def __init__(self, df, coords = None, tel_params = None, n_x = 1000, 
-               n_y = 1000, exp_time = 100, plot = False,**kwargs):  
-    """
-    Image simulation using Source catalog. Class which simulates the field 
+  def __init__(self, df, coords = None, tel_params = {}, n_x = 1000, 
+               n_y = 1000, exp_time = 100, plot = False, user_profiles = {},
+               **kwargs):  
+    super().__init__() 
+    """Image simulation using Source catalog. Class which simulates the field 
     
     and creates image
 
@@ -45,8 +46,6 @@ class Imager(Analyzer):
                Exposure time in seconds 
 
     """
-    Analyzer.__init__(self) 
-    
 
     # Flags
     self.shot_noise  = True
@@ -54,17 +53,12 @@ class Imager(Analyzer):
     self.sky         = True
     self.PRNU        = True
     self.DC          = True
+    self.DCNU        = True
     self.DNFP        = True
     self.QN          = True
+
+    # TBD
     self.cosmic_rays = False
-    
-    self.user_profiles = {'sky' : None,
-                          'PRNU': None,
-                          'QE'  : None,
-                          'DC'  : None,
-                          'DNFP': None,
-                          'Bias': None,
-                        }
 
     # Telescope and Detector Parameters
     self.tel_params = {'aperture'       : 100, # cm
@@ -74,14 +68,25 @@ class Imager(Analyzer):
                        'coeffs'         : 1,
                        'theta'          : 0
                        }
-    
-    if tel_params is not None:
-      self.tel_params.update(tel_params)
+
+    self.user_profiles = {'sky' : None,
+                          'PRNU': None,
+                          'QE'  : None,
+                          'T'   : None,
+                          'DC'  : None,
+                          'DNFP': None,
+                          'Bias': None,
+                        }
+
+    self.user_profiles.update(user_profiles)
+
+    self.tel_params.update(tel_params)
     self.tel_params.update(kwargs)
 
     self.det_params = {'shot_noise': 'Gaussian',
                       'M_sky'      :  27,
-                      'qe_sigma'   :  0.01,       # Pixel to pixel fluctuation
+                      'qe_response':  [],         # Wavelength dependence
+                      'qe_mean'    :  0.95,        # Effective QE
                       'bias'       :  35,         # electrons
                       'G1'         :  1,
                       'bit_res'    :  14,         
@@ -89,20 +94,21 @@ class Imager(Analyzer):
                       'PRNU_frac'  :  0.25/100,   # PRNU sigma
                       'T'          :  223,        # K
                       'DFM'        :  1.424e-2,   # 14.24 pA
-                      'pixel_area' :  1e-6,       # 
-                      'DN'         :  0.1/100,    # 
-                      'NF'         :  0,          # electrons 
+                      'pixel_area' :  1e-6,       # cm2
+                      'DCNU'       :  0.1/100,    # percentage
+                      'DNFP'       :  0.,          # electrons
+                      'NF'         :  0.,          # electrons 
                       'FWC'        :  1.4e5,      # electrons 
                       'C_ray_r'    :  2/50        # hits/second
                    }
+
     self.det_params.update(kwargs)
 
-    self.df    = df.dropna().copy()
+    self.df   = df.copy()
     self.n_x  = n_x
     self.n_y  = n_y
     self.pixel_scale    = self.tel_params['pixel_scale']
     self.theta          = self.tel_params['theta']*np.pi/180
-
     
     self.response_funcs = self.tel_params['response_funcs']
     self.coeffs         = self.tel_params['coeffs']
@@ -116,20 +122,11 @@ class Imager(Analyzer):
     
     self.psf_file       = self.tel_params['psf_file']
 
-    # Input Dataframe
-    if 'mag' not in self.df.keys():
-      raise Exception("'mag' column not found input dataframe")
-    
-    if 'ra' not in self.df or 'dec' not in self.df.keys():
-      if 'x' in self.df.keys() and 'y' in self.df.keys():
-        print("Converting xy to ra-dec")
-        self.df = self.xy_to_radec(df,n_x,n_y, self.pixel_scale)
-      else:
-        raise Exception("'ra','dec','x',or 'y', columns not found in input dataframe ")
+    self.check_df()
 
     if coords is None:
-      self.ra  = np.median(self.df.ra)
-      self.dec = np.median(self.df.dec)
+      self.ra  = np.median(self.df['ra'])
+      self.dec = np.median(self.df['dec'])
     else:
       self.ra  = coords[0]
       self.dec = coords[1]
@@ -138,6 +135,16 @@ class Imager(Analyzer):
     dec_n = np.round(self.dec,3)
     self.name = f" RA : {ra_n} degrees, Dec : {dec_n} degrees"
 
+    self.generate_sim_field(plot)
+
+    # Init Cosmic Rays
+    #area = ((n_x*self.pixel_scale)/3600)*((n_y*self.pixel_scale)/3600)
+    
+    #eff_area = (0.17/area)*self.exp_time
+    
+    #self.n_cosmic_ray_hits = int(eff_area*self.det_params['C_ray_r'])
+
+  def generate_sim_field(self,plot):
     if self.df is not None:
         self.calc_zp(plot = plot)
         self.init_psf_patch() 
@@ -157,13 +164,21 @@ class Imager(Analyzer):
     else:
         print("df cannot be None")
 
-    # Init Cosmic Rays
-    #area = ((n_x*self.pixel_scale)/3600)*((n_y*self.pixel_scale)/3600)
+  def check_df(self):
+    # Input Dataframe
+    if 'mag' not in self.df.keys():
+      raise Exception("'mag' column not found input dataframe")
     
-    #eff_area = (0.17/area)*self.exp_time
-    
-    #self.n_cosmic_ray_hits = int(eff_area*self.det_params['C_ray_r'])
-
+    if 'ra' not in self.df or 'dec' not in self.df.keys():
+      if 'x' in self.df.keys() and 'y' in self.df.keys():
+        print("Converting xy to ra-dec")
+        self.df.x = self.df.x + 2
+        self.df.y = self.df.y + 2
+        self.df = self.xy_to_radec(self.df,self.n_x,self.n_y, self.pixel_scale)
+      else:
+        raise Exception("'ra','dec','x',or 'y', \
+         columns not found in input dataframe ")
+        
   def calc_zp(self, plot = False):
     if len(self.response_funcs)>0:
 
@@ -181,8 +196,8 @@ class Imager(Analyzer):
         self.int_flux_Jy = int_flux_Jy
         self.flux_ratio  = flux_ratio
         
-        self.photons     = 1.51e3*self.int_flux_Jy*(W_eff/lambda_phot)*flux_ratio
-        self.zero_flux   = self.exp_time*self.tel_area*self.photons*self.coeffs
+        self.photons    = 1.51e3*self.int_flux_Jy*(W_eff/lambda_phot)*flux_ratio
+        self.zero_flux  = self.exp_time*self.tel_area*self.photons*self.coeffs
      
         filt_dat  = np.loadtxt(f'{data_path}/data/Sky_mag.dat')
         wav  = filt_dat[:,0]
@@ -193,7 +208,7 @@ class Imager(Analyzer):
         
         int_flux = params[1]
         self.det_params['M_sky'] = int_flux
-        self.M_sky_p   = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
+        self.M_sky_p =self.det_params['M_sky']-2.5*np.log10(self.pixel_scale**2)
 
     else :
 
@@ -204,7 +219,7 @@ class Imager(Analyzer):
 
       self.photons   = 1.51e3*self.int_flux_Jy*(self.W_eff/self.lambda_phot)
       self.zero_flux = self.exp_time*self.tel_area*self.photons*self.coeffs
-      self.M_sky_p   = self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
+      self.M_sky_p= self.det_params['M_sky'] - 2.5*np.log10(self.pixel_scale**2)
 
   def init_psf_patch(self, return_psf = False): 
 
@@ -316,6 +331,40 @@ class Imager(Analyzer):
     w.wcs.pc    = np.array([[ np.cos(theta),-np.sin(theta)],
                             [ np.sin(theta), np.cos(theta)]])
     return w
+  def compute_shot_noise(self,array,type_ = 'Poisson'):
+    """
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+        input array
+    type_ : str, optional
+         The default is 'Poisson'.
+
+    Returns
+    -------
+    shot_noise : numpy.ndarray
+         Return array with shot noise
+    """
+
+    if type(array) == np.float64 or type(array) == float:
+      n_x = self.n_y
+      n_y = self.n_x
+
+    else :
+      n_x = array.shape[0]
+      n_y = array.shape[1]
+
+    if type_ == 'Gaussian':
+        shot_noise = np.random.normal(loc=array, scale=np.sqrt(array), 
+                                      size = (n_x, n_y))
+    elif type_ =='Poisson':
+        shot_noise = np.random.poisson(lam=array,
+                                       size = (n_x, n_y)).astype(np.float64)
+    else:
+      print('Invalid type')
+
+    return shot_noise  
 
   def compute_coeff_arrays(self):
     """
@@ -331,37 +380,39 @@ class Imager(Analyzer):
     if self.sky:
       if self.user_profiles['sky'] is not None:
         if self.user_profiles['sky'].shape == (n_x,n_y):
-          self.sky_photoelec = self.user_profiles['sky']
+          self.sky_photons = self.user_profiles['sky']
         else:
-          raise Exception(f"""User defined sky array shape: {self.user_profiles['sky'].shape}
+          raise Exception(f"""User defined sky array shape: \
+          {self.user_profiles['sky'].shape} \
           is not same as detector shape {(n_x,n_y)}""")
 
       else: 
-        self.sky_photoelec = self.compute_shot_noise(self.sky_bag_flux,
-                                                      'Poisson')  
+        self.sky_photons = self.compute_shot_noise(self.sky_bag_flux)  
     else:
-      self.sky_photoelec = 0
+      self.sky_photons = 0
 
     if self.QE:
-      if self.user_profiles['QE'] is not None:
-        if self.user_profiles['QE'].shape == (n_x,n_y):
-          self.qe_array = self.user_profiles['QE']
-        else:
-          raise Exception(f"""User defined QE array shape: {self.user_profiles['QE'].shape}
-          is not same as detector shape {(n_x,n_y)}""")
-      else:
-        self.qe_array =  np.random.normal(loc=0, 
-                                          scale=self.det_params['qe_sigma'],
-                                            size=(n_x, n_y))
+      if len(self.det_params['qe_response']) != 0:
+        wav  = np.linspace(1000,10000,10000)
+        flux = 3631/(3.34e4*wav**2)   # AB flux
+        
+        _, _, _ , params = bandpass(wav,flux,self.det_params['qe_response']
+                                        , plot = False)
+        
+        _, _, _, _, flux_ratio = params
+        self.det_params['qe_mean'] = flux_ratio
+
     else:
-      self.qe_array = 0
+      self.det_params['qe_mean'] = 1
 
     if self.user_profiles['Bias'] is not None:
       if self.user_profiles['Bias'].shape == (n_x,n_y):
         self.bias_array = self.user_profiles['Bias']
       else:
-        raise Exception(f"""User defined Bias array shape: {self.user_profiles['Bias'].shape}
+        raise Exception(f"""User defined Bias array shape: \
+        {self.user_profiles['Bias'].shape} \
         is not same as detector shape {(n_x,n_y)}""")
+
     else:
       self.bias_array =  np.random.normal(loc=self.det_params['bias'], 
                                         scale=self.det_params['RN'],
@@ -371,7 +422,8 @@ class Imager(Analyzer):
         if self.user_profiles['PRNU'].shape == (n_x,n_y):
           self.PRNU_array = self.user_profiles['PRNU']
         else:
-          raise Exception(f"""User defined PRNU array shape: {self.user_profiles['PRNU'].shape}
+          raise Exception(f"""User defined PRNU array shape: \
+          {self.user_profiles['PRNU'].shape} \
           is not same as detector shape {(n_x,n_y)}""")
       else:  
         self.PRNU_array =  np.random.normal(loc=0, 
@@ -384,44 +436,60 @@ class Imager(Analyzer):
       if self.user_profiles['DC'] is not None:
         if self.user_profiles['DC'].shape == (n_x,n_y):
           self.DR = self.user_profiles['DC']
-          self.DC_array = self.user_profiles['DC']*self.exp_time
         else:
-          raise Exception(f"""User defined DC array shape: {self.user_profiles['DC'].shape}
+          raise Exception(f"""User defined DC array shape:
+           {self.user_profiles['DC'].shape}
           is not same as detector shape {(n_x,n_y)}""")
       else:   
-        self.DR = self.dark_current(self.det_params['T'], self.det_params['DFM'], 
-                                    self.det_params['pixel_area'])
-        np.random.seed(369)
-        self.DC_array = np.random.normal(loc = self.DR*self.exp_time, 
-                                            scale = np.sqrt(self.DR*self.exp_time),
-                                            size=(n_x, n_y))
-    else: 
-        self.DC_array = 0
-        self.DR       = 0
-    if self.DNFP and self.DC:
-      if self.user_profiles['DNFP'] is not None:
-        if self.user_profiles['DNFP'].shape == (n_x,n_y):
-          self.DNFP_array = self.user_profiles['DNFP']*self.exp_time
+        if self.user_profiles['T'] is not None:
+          if self.user_profiles['T'].shape == (n_x,n_y):
+            self.DR = self.dark_current(self.user_profiles['T'], 
+                                        self.det_params['DFM'], 
+                                        self.det_params['pixel_area'])
+          else:
+            raise Exception(f"""User defined DC array shape: 
+            {self.user_profiles['DC'].shape}
+             is not same as detector shape {(n_x,n_y)}""")
         else:
-          raise Exception(f"""User defined DNFP array shape: {self.user_profiles['DNFP'].shape}
-          is not same as detector shape {(n_x,n_y)}""")
-      else:
+          self.DR = self.dark_current(self.det_params['T'], 
+                                      self.det_params['DFM'],           
+                                      self.det_params['pixel_area'])
+          
+      # Dark Current Non-uniformity
+      if self.DCNU:
         np.random.seed(369)
-        self.DNFP_array =  np.random.lognormal(mean= 0, 
-                                      sigma = self.exp_time*self.DR*self.det_params['DN'],
-                                      size=(n_x, n_y))
-      self.DC_array*=(1 + self.DNFP_array)
-    else:
-        self.DNFP_array = 0
+        self.DCNU_array = np.random.lognormal(mean = 0, 
+                           sigma = self.exp_time*self.DR*self.det_params['DCNU'],
+                            size = (n_x, n_y))
+        self.DR *=self.DCNU_array
 
+      self.DC_array = self.compute_shot_noise(self.DR*self.exp_time)
+      
+      # Dark Current Fixed Pattern
+      if self.DNFP:
+        if self.user_profiles['DNFP'] is not None:
+          if self.user_profiles['DNFP'].shape == (n_x,n_y):
+            self.DNFP_array = self.user_profiles['DNFP']               
+          else:
+            raise Exception(f"""User defined DNFP array shape: 
+                                {self.user_profiles['DNFP'].shape}
+                    is not same as detector shape {(n_x,n_y)}""")
+        else:
+          np.random.seed(369)
+          self.DNFP_array =  self.compute_shot_noise(self.det_params['DNFP'])
+        self.DC_array += self.DNFP_array       
+    else:
+      self.DC_array = 0
+
+    # Quantization Noise
     if self.QN:
-      self.QN_value = (self.det_params['FWC']/(pow(2,self.det_params['bit_res']) #electrons
+      # electrons
+      self.QN_value = (self.det_params['FWC']/(pow(2,self.det_params['bit_res']) 
                                             *np.sqrt(12)))
 
       self.QN_array = self.QN_value*np.random.randint(-1,2,size = (n_x,n_y))
     else :
       self.QN_array = 0
-
 
   def dark_current(self,T, DFM, pixel_area):
     """
@@ -446,7 +514,7 @@ class Imager(Analyzer):
     EgT	= 1.1557 - (7.021e-4*T**2/(1108+T))
     DR	= const*pixel_area*(T**1.5)*DFM*np.exp(-EgT/(2*Kb*T))
     return DR
-    
+
   def generate_photons(self, image, patch_width, df):
     """
       This function creates sims based on ABmag  on a 
@@ -490,41 +558,6 @@ class Imager(Analyzer):
 
     return image
 
-  def compute_shot_noise(self,array,type_ = 'Gaussian'):
-    """
-
-    Parameters
-    ----------
-    array : numpy.ndarray
-        input array
-    type_ : str, optional
-         The default is 'gaussian'.
-
-    Returns
-    -------
-    shot_noise : numpy.ndarray
-         Return array with shot noise
-    """
-
-    if type(array) == np.float64 :
-      n_x = self.n_y
-      n_y = self.n_x
-
-    else :
-      n_x = array.shape[0]
-      n_y = array.shape[1]
-
-    if type_ == 'Gaussian':
-        shot_noise = np.random.normal(loc=array, scale=np.sqrt(array), 
-                                      size = (n_x, n_y))
-    elif type_ =='Poisson':
-        shot_noise = np.random.poisson(lam=array,
-                                       size = (n_x, n_y)).astype(array.dtype)
-    else:
-      print('Invalid type')
-
-    return shot_noise  
-
 
   def __call__(self,det_params = None,n_stack = 1,stack_type = 'median',
                photometry = 'Aper', fwhm = 3, sigma = 3, detect_sources = False,
@@ -536,7 +569,7 @@ class Imager(Analyzer):
      Dictionary contianing detector parameters. The default is None.
                 {     'shot_noise' :  str,
                       'M_sky'      :  float,
-                      'qe_sigma'   :  float,       Pixel to pixel fluctuation
+                      'qe_mean'    :  float,  photons to photoelectrons
                       'bias'       :  float,       electrons
                       'G1'         :  float,
                       'bit_res'    :  int,         
@@ -544,8 +577,9 @@ class Imager(Analyzer):
                       'PRNU_frac'  :  float,       PRNU sigma
                       'T'          :  float,       K
                       'DFM'        :  float,       pA
-                      'pixel_area' :  float,       
-                      'DN'         :  float,     
+                      'pixel_area' :  float, 
+                      'DCNU'       :  float        fraction
+                      'DNFP'       :  float,       electrons
                       'NF'         :  float,       electrons 
                       'FWC'        :  float,       electrons 
                       'C_ray_r'    :  float        hits/second
@@ -606,38 +640,37 @@ class Imager(Analyzer):
       self.init_image_array()
       self.compute_coeff_arrays()
 
-      # Source photoelectrons
-      self.source_photoelec = self.generate_photons(self.image, self.n_pix_sub, 
+      # Source photons
+      self.source_photons = self.generate_photons(self.image, self.n_pix_sub, 
                                                       self.sim_df)   
-      # Sky photoelectrons                                              
-      self.light_array = self.source_photoelec + self.sky_photoelec
+      # Sky photons added to source                                      
+      self.light_array = (self.source_photons + self.sky_photons)
 
       # Source shot_noise
       if self.shot_noise:
          self.light_array = self.compute_shot_noise(self.light_array 
                               ,type_ = self.det_params['shot_noise'])
       
-      # QE pixel to pixel variation
-      self.light_array    = self.light_array*(1+self.qe_array)    
+      # QE pixel to pixel variation | Source photoelectrons
+      self.light_array    = self.light_array*self.det_params['qe_mean']
 
-      # PRNU. Might be degenrate with QE
+      # Photon Response (Quantum Efficiency) Non Uniformity
       if self.PRNU:
         self.light_array*=(1+self.PRNU_array)
 
-      # Dark Current
-      if self.DC:
-        self.photoelec_array = self.light_array + self.DC_array
-      else:
-        self.photoelec_array = self.light_array
+      # Dark Current. Includes DCNU, DNFP and shot noise
+      self.photoelec_array = self.light_array + self.DC_array
 
       # Addition of Quantization error, Bias and Noise floor
-      self.charge = self.photoelec_array + self.QN_array + self.det_params['NF'] + self.bias_array 
+      self.charge = self.photoelec_array + self.QN_array + self.det_params['NF'] \
+                                      + self.bias_array 
       
       # Photoelec to ADUs
       self.digital = (self.charge*self.gain).astype(int)
 
       # Full well condition
-      self.digital = np.where(self.digital>=pow(2, self.det_params['bit_res']),pow(2, self.det_params['bit_res']), self.digital)
+      self.digital = np.where(self.digital>=pow(2, self.det_params['bit_res']),
+                              pow(2, self.det_params['bit_res']), self.digital)
       
       digital_stack.append(self.digital)
     
@@ -653,7 +686,6 @@ class Imager(Analyzer):
           x = np.random.randint(0,self.n_x_main)
           y = np.random.randint(0,self.n_y_main)
           self.digital[x,y] = pow(2, self.det_params['bit_res'])
-
 
     self.wcs = self.create_wcs(self.n_x,self.n_y, 
                                self.ra,self.dec, self.pixel_scale, self.theta)
@@ -675,13 +707,160 @@ class Imager(Analyzer):
     self.header['Temp'] = str(self.det_params['T']) + 'K' 
     self.header['bias'] = self.det_params['bias']
     self.header['RN']   = self.det_params['RN']
-    self.header['DR']   = self.DR
+    self.header['DR']   = np.mean(self.DR)
     self.header['NF']   = self.det_params['NF']
 
-    Analyzer.__call__(self,df = self.img_df, wcs = self.wcs, 
+    super().__call__(df = self.img_df, wcs = self.wcs, 
                      data = self.digital.astype(float),
                      photometry = photometry, fwhm = fwhm, sigma = sigma,
                      detect_sources = detect_sources, ZP = ZP)
+    
+  def add_distortion(self,x_map,y_map):
+    self.x_map = x_map
+    self.y_map = y_map
+    # Interpolation to be added
+    data = self.digital.astype(float).copy()
+    self.org_digital = data
+    distorted_img = cv2.remap(data, xmap.astype(np.float32), 
+                              ymap.astype(np.float32), cv2.INTER_LANCZOS4)
+    distorted_img = distorted_img.astype(int)
+    self.digital = np.where(distorted_img>0,distorted_img,1)
+  
+  def remove_distortion(self):
+    # undistort to be added
+    self.digital = self.org_digital
+
+class Mosaic(Imager):
+  """
+  A class to split bigger images to tiles and stitch them together
+
+  """
+
+  def __init__(self, df = None, coords = None, ras = None, decs = None,
+               tel_params=None,exp_time = 100,
+               n_x = 1000, n_y  = 1000, mos_n = 1, mos_m = 1, **kwargs):
+    
+      """
+      Analyzer.init()
+
+      Parameters
+      ----------
+      mos_n : int,
+              number of tiles in RA direction
+
+      mos_m : int,
+              number of tiles in Dec direction
+      """
+
+      super().__init__(df=df, coords=coords, exp_time = exp_time, n_x = n_x, 
+                    n_y = n_y, tel_params=tel_params, **kwargs)
+      
+      self.n = mos_n
+      self.m = mos_m
+      patch_width_mid    = self.n_pix_sub//2
+
+
+      if ras is None or decs is None:
+        self.mosaic_ra   = self.ra
+        self.mosaic_dec  = self.dec  
+        self.mosaic_n_x  = n_x
+        self.mosaic_n_y  = n_y
+        self.mosaic_df   = df
+        self.mosaic_wcs  = self.create_wcs(self.mosaic_n_x, self.mosaic_n_y, 
+                                        self.mosaic_ra,self.mosaic_dec,
+                                        self.pixel_scale)
+
+
+        self.df_split(df, self.n, self.m, n_x, n_y, self.mosaic_wcs)
+      
+      else:
+        self.ras = ras
+        self.decs = decs
+
+  def df_split(self,df,n,m, n_x, n_y, wcs):
+
+    """
+    Function to split dataframe based shape and number of tiles
+
+    Parameters
+    ----------
+    n : int,
+         number of tiles in RA direction
+
+    m : int,
+         number of tiles in Dec direction
+
+    n_x : int,
+         number of pixels in RA direction
+
+    n_y : int,
+         number of pixels in Dec direction
+    """
+
+    x_bins = np.linspace(0,n_x,n+1)
+    y_bins = np.linspace(0,n_y,m+1)
+
+    x_cens = 0.5*(x_bins[:-1] + x_bins[1:]) - 1
+    y_cens = 0.5*(y_bins[:-1] + y_bins[1:]) - 1
+    
+    cens = wcs.array_index_to_world_values(y_cens,x_cens)
+    ra_cens  = cens[0]
+    ra_cens  = np.where(np.round(ra_cens,1)==360,ra_cens-360,ra_cens)
+    dec_cens = cens[1]
+
+    self.ras  = ra_cens
+    self.decs = dec_cens
+    self.filenames = []
+                   
+  def __call__(self,det_params = None, n_stack = 1, stack_type = 'median', 
+               photometry = True, fwhm = None):
+    
+    """
+      Imager.call()
+
+      Calls the Imager class iteratively to generate image tiles and stitches
+      tiles together
+
+    """
+
+    # Flags
+    n_x = self.n_x//self.n + 50
+    n_y = self.n_y//self.m + 50
+    
+    for i in range(self.n):
+      for j in range(self.m):
+
+        df         = self.mosaic_df
+        coords     = (self.ras[i],self.decs[j])
+        exp_time   = self.exp_time
+        tel_params = self.tel_params
+        det_params['T'] += np.random.randint(-3,3)
+        np.random.seed(i+2*j)
+        super().__init__(df = df, coords=coords, exp_time = exp_time, n_x = n_x, 
+                    n_y = n_y, tel_params=tel_params)
+        np.random.seed(i+2*j)
+        super().__call__(det_params = det_params, n_stack = n_stack, 
+                          stack_type = stack_type, photometry = None)
+
+        self.writeto(f'{i}{j}_mosaic.fits')
+        self.filenames.append(f'{i}{j}_mosaic.fits')
+    
+  def make_mosaic(self):
+    hdus = []
+    for fil in self.filenames:
+      hdu = fits.open(fil)[0]
+      hdus.append(hdu)
+
+    wcs_out, shape_out = find_optimal_celestial_wcs(hdus, frame='icrs',
+                                                auto_rotate=True)
+    
+    array, footprint = reproject_and_coadd(hdus,
+                                       wcs_out, shape_out=(shape_out),
+                                       reproject_function=reproject_interp)
+    
+    self.wcs = wcs_out
+    self.digital = array
+    self.footprint = footprint
 
 
 

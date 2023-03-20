@@ -7,7 +7,7 @@ import seaborn as sb
 from pathlib import Path
 from astropy.modeling import models
 
-sb.set_style('dark')
+sb.set_style('white')
 matplotlib.rcParams['font.size']=12
 matplotlib.rcParams['figure.figsize']=(10,10)
 

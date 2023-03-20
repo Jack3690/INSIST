@@ -55,7 +55,9 @@ class Analyzer(object):
      # Calculate zero point
       if ZP is None:
         zero_p_flux = self.zero_flux + self.sky_bag_flux
-        zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
+        zero_p_flux += np.mean(self.DR)*self.exp_time + self.det_params['NF'] + \
+         self.det_params['bias']
+
         zero_p_flux *= self.gain*0.9499142715255932
       else:
         zero_p_flux = ZP
@@ -81,12 +83,12 @@ class Analyzer(object):
         positions  = [(i,j) for i,j in zip(pix[1],pix[0])]
       
       # create circular aperture object
-      self.aps   = aper.CircularAperture(positions, r = fwhm)
+      self.aps   = aper.CircularAperture(positions, r = 2*fwhm)
       # count number of pixels within the aperture
       ap_pix     = np.count_nonzero(self.aps.to_mask()[0])
       # create circular annulus object
-      self.bags  = aper.CircularAnnulus(positions, r_in = 2*fwhm, 
-                                          r_out = 3*fwhm)
+      self.bags  = aper.CircularAnnulus(positions, r_in = 3*fwhm, 
+                                          r_out = 5*fwhm)
       # count number of pixels within the annulus
       bag_pix    = np.count_nonzero(self.bags.to_mask()[0])
       
@@ -154,7 +156,7 @@ class Analyzer(object):
 
       if ZP is None:
         zero_p_flux = self.zero_flux + self.sky_bag_flux
-        zero_p_flux += self.DR*self.exp_time + self.det_params['NF'] + self.det_params['bias']
+        zero_p_flux += np.mean(self.DR)*self.exp_time + self.det_params['NF'] + self.det_params['bias']
         zero_p_flux *= self.gain
       else:
         zero_p_flux = ZP
@@ -207,7 +209,8 @@ class Analyzer(object):
     c = df['mag']
 
     img = ax.scatter(x,y, c = c, marker = marker, cmap = cmap)
-    plt.colorbar(img)
+    cb = plt.colorbar(img)
+    cb.set_label('mag (ABmag)')
     ax.set_title(f"""Requested Center : {self.name} | {len(df)} sources
     Fov(RA) : {fov_x} (deg) | Fov(Dec) : {fov_y} (deg)""")
     ax.invert_xaxis()
@@ -263,22 +266,20 @@ class Analyzer(object):
 
         norm = None     
         if source == 'Digital':
-          data  = self.digital
+          data = self.digital
           norm = col.LogNorm()
         elif source =='Charge':
-          data  = self.charge
+          data = self.charge
           norm = col.LogNorm()
         elif source =='Source':
-          data  = self.light_array
+          data = self.light_array
           norm = col.LogNorm()
         elif source == 'Sky':
-          data = self.sky_photoelec
+          data = self.sky_photons
         elif source == 'DC':
           data = self.DC_array
-        elif source == 'QE':
-          data = self.qe_array
         elif source =='Bias':
-          data = self.bias_array + self.DC_array 
+          data = self.bias_array
         elif source == 'PRNU':
           data = self.PRNU_array
         elif source == 'DNFP':
@@ -296,7 +297,8 @@ class Analyzer(object):
 
         img = ax.imshow(data,cmap=cmap , norm = norm)
         ax.grid(False)
-        plt.colorbar(img,ax = ax)
+        cb = plt.colorbar(img,ax = ax)
+        cb.set_label('DN')
         ax.set_title(f'{source} \nRequested center : {self.name}')
         ax.grid(False)
 
@@ -357,13 +359,11 @@ class Analyzer(object):
         elif source =='Source':
           data  = self.light_array
         elif source == 'Sky':
-          data = self.sky_photoelec.ravel()
+          data = self.sky_photons.ravel()
         elif source == 'DC':
           data = self.DC_array.ravel()
-        elif source == 'QE':
-          data = self.qe_array
         elif source =='Bias':
-          data = (self.bias_array + self.DC_array).ravel()
+          data = self.bias_array.ravel()
         elif source == 'PRNU':
           data = self.PRNU_array.ravel()
         elif source == 'DNFP':
@@ -444,7 +444,6 @@ class Analyzer(object):
                       'Source'  : Source + Sky + Noises
                       'Sky'     : Sky + shot_noise
                       'DC'      : Dark Current + DNFP
-                      'QE'      : Quantum efficiency fluctuation across detector
                       'Bias'    : Charge offset
                       'PRNU'    : Photon Response Non-Uniformity
                       'DNFP'    : Dark Noise Fixed Pattern
@@ -458,24 +457,19 @@ class Analyzer(object):
         data = user_source
       elif source == 'Digital':
         data  = self.digital
-        norm = col.LogNorm()
       elif source =='Charge':
         data  = self.charge
-        norm = col.LogNorm()
       elif source =='Source':
-          data  = self.light_array
+        data  = self.light_array
       elif source == 'Sky':
         data = self.sky_photoelec
       elif source == 'DC':
         data = self.DC_array
-      elif source == 'QE':
-        data = self.qe_array
       elif source =='Bias':
-        data = self.bias_array + self.DC_array 
+        data = self.bias_array
       elif source == 'PRNU':
         data = self.PRNU_array
       elif source == 'DNFP':
-        norm = col.LogNorm()
         data = self.DNFP_array
       elif source == 'QN':
         data = self.QN_array
@@ -489,6 +483,7 @@ class Analyzer(object):
       hdul.writeto(f'{name}',overwrite= True)
     else:
       print("Run Simulation")
+
 
 
 

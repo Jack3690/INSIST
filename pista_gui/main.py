@@ -245,8 +245,7 @@ class Ui(QtWidgets.QMainWindow):
         self.shot_noise_type.setCurrentText('Gaussian')
         self.sky_shot_noise_type.setCurrentText('Gaussian')
         
-        self.qe_mean.setText('0')
-        self.qe_sigma.setText(str(sim.det_params['qe_sigma']))
+        self.qe_mean.setText('0.95')
         self.bias.setText(str(sim.det_params['bias']))
         self.gain.setText(str(sim.det_params['G1']))
         self.RN.setText(str(sim.det_params['RN']))
@@ -262,7 +261,7 @@ class Ui(QtWidgets.QMainWindow):
         self.det_T.setText(str(sim.det_params['T']))
         self.DFM.setText(str(sim.det_params['DFM']))
         self.pix_area.setText(str(sim.det_params['pixel_area']))
-        self.DN.setText(str(sim.det_params['DN']))
+        self.DN.setText(str(sim.det_params['DCNU']))
         
         self.aperture.setText(str(sim.tel_params['aperture']))
         coating = f'{data_path}/data/UV/Coating.dat'
@@ -411,18 +410,6 @@ class Ui(QtWidgets.QMainWindow):
                     self.qe_mean.setText('0.')
                     self.params['qe_mean'] = 0.
             
-            qe_sigma = self.qe_sigma.text()
-            if len(qe_sigma)<1:
-                self.qe_sigma.setText('0.01')
-                self.params['qe_sigma'] = 0.01
-            elif self.check_input(qe_sigma):
-                qe_sigma  = float(qe_sigma)  
-                
-                if qe_sigma <0.6*self.params['qe_mean']:
-                    self.params['qe_sigma'] = qe_sigma
-                else:
-                    self.qe_sigma.setText('0.01')
-                    self.params['qe_sigma'] = 0.01
                 
         bias = self.bias.text()
         if len(bias)<1:
@@ -534,15 +521,15 @@ class Ui(QtWidgets.QMainWindow):
             DN = self.DN.text()
             if len(DN)<1:
                 self.DN.setText('0.001')
-                self.params['DN'] = 0.1/100
+                self.params['DCNU'] = 0.1/100
                 
             elif self.check_input(DN):
                 DN  = float(DN)    
                 if DN >= 0:
-                    self.params['DN'] = DN
+                    self.params['DCNU'] = DN
                 else:
                     self.DN.setText('0.001')
-                    self.params['DN'] =0.1/100
+                    self.params['DCNU'] =0.1/100
         if self.DC.isChecked():
           
             DFM = self.DFM.text()
@@ -713,8 +700,8 @@ class Ui(QtWidgets.QMainWindow):
             
             ax = self.canvas_panel.figure.add_subplot(g[1,1])
             
-            x = sim.source_photoelec.ravel()
-            y = x/np.sqrt(sim.source_photoelec).ravel()
+            x = sim.source_photons.ravel()
+            y = x/np.sqrt(sim.source_photons).ravel()
             x = np.where(x==0,np.nan,x)
             ax.plot(x,y,'.', color ='red')
             
@@ -811,8 +798,8 @@ class Ui(QtWidgets.QMainWindow):
             
             ax = self.canvas_panel.figure.add_subplot(g[1,1])
             
-            x = sim.source_photoelec.ravel()
-            y = x/np.sqrt(sim.source_photoelec).ravel()
+            x = sim.source_photons.ravel()
+            y = x/np.sqrt(sim.source_photons).ravel()
             x = np.where(x==0,np.nan,x)
             ax.plot(x,y,'.', color ='red')
             if self.DC.isChecked():

@@ -4,3 +4,4 @@ astropy
 photutils
 numpy
 seaborn
+opencv-python

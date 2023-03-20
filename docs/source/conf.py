@@ -1,5 +1,5 @@
-# Configuration file for the Sphinx documentation builder.
-#
+""" Configuration file for the Sphinx documentation builder."""
+
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
@@ -14,9 +14,9 @@ sys.path.insert(0, os.path.abspath("../../src"))
 package_path = os.path.abspath('../../src')
 os.environ['PYTHONPATH'] = ':'.join((package_path, os.environ.get('PYTHONPATH', '')))
 
-project = 'INSIST-PISTA'
-copyright = '2023, Avinash CK and INSIST Science Team, IIA'
-author = 'Avinash CK and INSIST Science Team, IIA'
+project = 'insist-pista'
+copyright = '2023, Avinash CK and INSIST Science Team'
+author = 'Avinash CK'
 release = '1.0.3'
 
 # -- General configuration ---------------------------------------------------
@@ -31,8 +31,6 @@ extensions = ['sphinx.ext.napoleon',
 ]
 templates_path = ['_templates']
 exclude_patterns = []
-
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

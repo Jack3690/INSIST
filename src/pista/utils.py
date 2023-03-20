@@ -1,17 +1,19 @@
+""This module contains additional functions for the package"""
+from pathlib import Path
+data_path = Path(__file__).parent.joinpath()
+
 import numpy as np
 
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sb
-
-from pathlib import Path
 from astropy.modeling import models
 
 sb.set_style('white')
 matplotlib.rcParams['font.size']=12
 matplotlib.rcParams['figure.figsize']=(10,10)
 
-data_path = Path(__file__).parent.joinpath()
+
 
 def bandpass(wav, flux, inputs, plot = True, fig = None, ax = None):
   """

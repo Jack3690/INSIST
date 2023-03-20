@@ -1,3 +1,5 @@
+"""This module contains classes that can be utilized for visualizing and
+    analyzing the simulated images and spectra"""
 from photutils import aperture as aper
 from photutils.aperture import aperture_photometry
 from matplotlib import colors as col
@@ -16,9 +18,7 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.coordinates import SkyCoord
 from astropy.stats import gaussian_fwhm_to_sigma, sigma_clipped_stats
 from astropy import units as u
-
 import numpy as np
-
 class Analyzer(object):
   def __init__(self):
       """

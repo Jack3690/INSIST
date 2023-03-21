@@ -56,9 +56,8 @@ class Analyzer():
         # Calculate zero point
         if zero_point is None:
             zero_p_flux = self.zero_flux + self.sky_bag_flux
-            zero_p_flux += np.mean(self.DR)*self.exp_time \
-                                 + self.det_params['NF'] \
-                                 + self.det_params['bias']
+            zero_p_flux += np.mean(self.DR)*self.exp_time
+            zero_p_flux += self.det_params['NF'] + self.det_params['bias']
 
             zero_p_flux *= self.gain*0.9499142715255932
         else:
@@ -232,12 +231,12 @@ class Analyzer():
         Source: str,
                 Choose from
                             'Digital' : Final digial image
-                            'Charge'  : electrons, Light(Source + sky) 
+                            'Charge'  : electrons, Light(Source + sky)
                                         + Dark Current + Noises
                             'Source'  : Source + Sky + Noises
                             'Sky'     : Sky + shot_noise
                             'DC'      : Dark Current + DNFP
-                            'QE'      : Quantum efficiency fluctuation 
+                            'QE'      : Quantum efficiency fluctuation
                                           across detector
                             'Bias'    : Charge offset
                             'PRNU'    : Photon Response Non-Uniformity
@@ -333,7 +332,7 @@ class Analyzer():
         Source: str,
                 Choose from
                           'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky) 
+                          'Charge'  : electrons, Light(Source + sky)
                                       + Dark Current + Noises
                           'Source'  : Source + Sky + Noises
                           'Sky'     : Sky + shot_noise
@@ -397,12 +396,12 @@ class Analyzer():
         Source: str,
             Choose from
                           'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky) 
+                          'Charge'  : electrons, Light(Source + sky)
                                       + Dark Current + Noises
                           'Source'  : Source + Sky + Noises
                           'Sky'     : Sky + shot_noise
                           'DC'      : Dark Current + DNFP
-                          'QE'      : Quantum efficiency fluctuation 
+                          'QE'      : Quantum efficiency fluctuation
                                       across detector
                           'Bias'    : Charge offset
                           'PRNU'    : Photon Response Non-Uniformity
@@ -447,7 +446,7 @@ class Analyzer():
         Source: str,
             Choose from
                           'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky) 
+                          'Charge'  : electrons, Light(Source + sky)
                                           + Dark Current
                                           + Noises
                           'Source'  : Source + Sky + Noises
@@ -463,7 +462,7 @@ class Analyzer():
         """
 
         if np.all(self.image) is not None:
-            if user_source is not None: 
+            if user_source is not None:
                 if isinstance(user_source) == np.ndarray:
                     data = user_source
                 else:

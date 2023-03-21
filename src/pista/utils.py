@@ -43,38 +43,38 @@ def bandpass(wav, flux, inputs, plot=True, fig=None, ax=None):
             fig, ax = plt.subplots(1, 1, figsize=(12, 8))
         ax.plot(lambda_, flux_AB/flux_AB.max(),
                 label=r'$F(\lambda)$', alpha=0.7)
-        
+
     R_eff = 1
-    
+
     for i in inputs:
         file_name = i.split(',')[0]
         n = float(i.split(',')[1])
         f_max = float(i.split(',')[2])
-          
+
         filt_dat = np.loadtxt(file_name)
         wav = filt_dat[:, 0]
         flux = filt_dat[:, 1]
-        
+
         if np.amax(flux) > 1:
             flux /= f_max
-            
+
         indices = np.where((wav > lambda_[0]) & (wav < lambda_[-1]))
         wav_new = wav[indices]
         flux_new = flux[indices]
-    
+
         wav_new = np.concatenate([[lambda_[0]], [wav_new[0] - 1], wav_new,
                                   [wav_new[-1] + 1], [lambda_[-1]]])
-    
+
         flux_new = np.concatenate([[0], [0], flux_new, [0], [0]])
-    
+
         flux_out = np.interp(lambda_, wav_new, flux_new)
-        
+
         R_eff *= flux_out**n
-      
+
         if plot:
             ax.plot(lambda_, flux_out/flux_out.max(),
                     label=f"{file_name.split('/')[-1][:-4]}x{n}", alpha=0.7)
-    
+
     # Wavelength space
     conv_flux = R_eff*flux_AB
     int_flux = np.trapz(lambda_*conv_flux, lambda_)/np.trapz(lambda_*R_eff,
@@ -82,15 +82,15 @@ def bandpass(wav, flux, inputs, plot=True, fig=None, ax=None):
     W_eff = np.trapz(R_eff, lambda_)/R_eff.max()
     lambda_phot = np.trapz(lambda_**2*conv_flux,
                            lambda_)/np.trapz(lambda_*conv_flux, lambda_)
-    
+
     R_sq = np.where(R_eff > 0, 1, 0)
     flux_ratio = np.trapz(R_eff, lambda_)/np.trapz(R_sq, lambda_)
-    
+
     # Frequency space
     R_eff_Jy = R_eff*lambda_**2*3.34e4
     flux_AB = flux_AB*lambda_**2*3.34e4
     nu = 3e18/lambda_
-    
+
     conv_flux_Jy = R_eff_Jy*flux_AB
     int_flux_Jy = np.trapz(nu*conv_flux_Jy, nu)/np.trapz(nu*R_eff_Jy, nu)
     # Comparing to a square filter with same width
@@ -137,6 +137,7 @@ def generate_psf(npix, sigma, function='Gaussian'):
     np.save('user_defined_psf.npy', psf)
     return psf
 
+
 def spectra_to_mags(spec_df, inputs):
     """Function for converting spectra into magnitudes using response
     functions"""
@@ -149,7 +150,7 @@ def spectra_to_mags(spec_df, inputs):
         params = out[3]
         int_fluxjy = params[2]
         ab_mag = -2.5*np.log10(int_fluxjy/3631)
-        
+
         if ab_mag == np.nan:
             ab_mag = 100
         mags.append(ab_mag)

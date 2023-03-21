@@ -1,20 +1,20 @@
 """This modules contains classes for simulating Imaging, Mosaicing, and
     Spectroscopic modes"""
+from pathlib import Path
+from astropy import units as u
 from astropy.wcs import WCS
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
-from astropy import units as u
-from pathlib import Path
 
 import numpy as np
-from .utils import bandpass
-from .analysis import Analyzer
 
 import cv2
-
 from reproject import reproject_interp
 from reproject.mosaicking import reproject_and_coadd
 from reproject.mosaicking import find_optimal_celestial_wcs
+
+from .utils import bandpass
+from .analysis import Analyzer
 
 data_path = Path(__file__).parent.joinpath()
 
@@ -25,7 +25,7 @@ class Imager(Analyzer):
     and detector characteristics
     """
     def __init__(self, df, coords=None, tel_params={}, n_x=1000,
-                 n_y=1000, exp_time=100, plot=False, user_profiles={},
+                 n_y=1000, exp_time=100, plot=False, user_profiles=None,
                  **kwargs):
         """
         Parameters
@@ -76,6 +76,7 @@ class Imager(Analyzer):
                            'coeffs': 1,
                            'theta': 0
                            }
+        
         self.user_profiles = {
                               'sky': None,
                               'PRNU': None,
@@ -85,7 +86,8 @@ class Imager(Analyzer):
                               'DNFP': None,
                               'Bias': None,
                              }
-        self.user_profiles.update(user_profiles)
+        if user_profiles is not None:
+            self.user_profiles.update(user_profiles)
 
         self.tel_params.update(tel_params)
         self.tel_params.update(kwargs)
@@ -155,6 +157,8 @@ class Imager(Analyzer):
         # self.n_cosmic_ray_hits = int(eff_area*self.det_params['C_ray_r'])
 
     def generate_sim_field(self, plot):
+        """This function creates array with FoV a bit wider
+        than user defined size for flux conservation"""
         if self.df is not None:
             self.calc_zp(plot=plot)
             self.init_psf_patch()
@@ -170,7 +174,7 @@ class Imager(Analyzer):
                                        x_left=x_left, x_right=x_right,
                                        y_left=y_left, y_right=y_right)
             if len(self.sim_df) < 1:
-                raise Exception("Not Enough sources inside FoV. Increase n_x\
+                print("Not Enough sources inside FoV. Increase n_x\
                                 and n_y")
         else:
             print("df cannot be None")

@@ -1,7 +1,0 @@
-pandas
-matplotlib
-astropy
-photutils
-numpy
-seaborn
-opencv-python

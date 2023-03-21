@@ -72,8 +72,7 @@ class Imager(Analyzer):
                            'response_funcs': [],
                            'coeffs': 1,
                            'theta': 0
-                           }
-      
+                           }     
         self.user_profiles = {'sky': None,
                               'PRNU': None,
                               'QE': None,
@@ -359,12 +358,12 @@ class Imager(Analyzer):
         """
     
         if type(array) == np.float64 or type(array) == float:
-          n_x = self.n_y
-          n_y = self.n_x
+            n_x = self.n_y
+            n_y = self.n_x
       
         else:
-          n_x = array.shape[0]
-          n_y = array.shape[1]
+            n_x = array.shape[0]
+            n_y = array.shape[1]
       
         if type_ == 'Gaussian':
             shot_noise = np.random.normal(loc=array, scale=np.sqrt(array), 
@@ -386,12 +385,11 @@ class Imager(Analyzer):
         -------
         None.
         """
-        n_x = self.n_y 
-        n_y = self.n_x
-    
+        n_x = self.n_y
+        n_y = self.n_x  
         if self.sky:
             if self.user_profiles['sky'] is not None:
-                if self.user_profiles['sky'].shape == (n_x,n_y):
+                if self.user_profiles['sky'].shape == (n_x, n_y):
                     self.sky_photons = self.user_profiles['sky']
                 else:
                     raise Exception(f"""User defined sky array shape: \
@@ -609,7 +607,8 @@ class Imager(Analyzer):
                       None   : Simulate without photometry
         fwhm : float, pixels
                 During aperture photometry,
-                fwhm corresponds to FWHM circular aperture for aperture photometry
+                fwhm corresponds to FWHM circular aperture for 
+                aperture photometry
                 
                 During PSF photometry,
                 fwhm corresponds FWHM kernel to use for PSF photometry
@@ -620,8 +619,8 @@ class Imager(Analyzer):
                 If true, DARStarFinder is used to detect sources for aperture 
                 photometry
                 
-                if false, input catalog is used for getting positions of sources
-                for aperture photometry
+                if false, input catalog is used for getting positions 
+                of sources for aperture photometry
         ZP    : float,
                 zero point of the telescope.
                 Default None, zero point is calculated theoretically or using
@@ -719,11 +718,11 @@ class Imager(Analyzer):
 
         self.header = self.wcs.to_header()
         self.header['gain'] = self.det_params['G1']
-        self.header['Temp'] = str(self.det_params['T']) + 'K' 
+        self.header['Temp'] = str(self.det_params['T']) + 'K'
         self.header['bias'] = self.det_params['bias']
-        self.header['RN']   = self.det_params['RN']
-        self.header['DR']   = np.mean(self.DR)
-        self.header['NF']   = self.det_params['NF']
+        self.header['RN'] = self.det_params['RN']
+        self.header['DR'] = np.mean(self.DR)
+        self.header['NF'] = self.det_params['NF']
 
         super().__call__(df=self.img_df, wcs=self.wcs, 
                          data=self.digital.astype(float),

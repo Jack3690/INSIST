@@ -232,11 +232,13 @@ class Analyzer():
         Source: str,
                 Choose from
                             'Digital' : Final digial image
-                            'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                            'Charge'  : electrons, Light(Source + sky) 
+                                        + Dark Current + Noises
                             'Source'  : Source + Sky + Noises
                             'Sky'     : Sky + shot_noise
                             'DC'      : Dark Current + DNFP
-                            'QE'      : Quantum efficiency fluctuation across detector
+                            'QE'      : Quantum efficiency fluctuation 
+                                          across detector
                             'Bias'    : Charge offset
                             'PRNU'    : Photon Response Non-Uniformity
                             'DNFP'    : Dark Noise Fixed Pattern
@@ -331,11 +333,13 @@ class Analyzer():
         Source: str,
                 Choose from
                           'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                          'Charge'  : electrons, Light(Source + sky) 
+                                      + Dark Current + Noises
                           'Source'  : Source + Sky + Noises
                           'Sky'     : Sky + shot_noise
                           'DC'      : Dark Current + DNFP
-                          'QE'      : Quantum efficiency fluctuation across detector
+                          'QE'      : Quantum efficiency fluctuation
+                                       across detector
                           'Bias'    : Charge offset
                           'PRNU'    : Photon Response Non-Uniformity
                           'DNFP'    : Dark Noise Fixed Pattern
@@ -393,11 +397,13 @@ class Analyzer():
         Source: str,
             Choose from
                           'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky) + Dark Current + Noises
+                          'Charge'  : electrons, Light(Source + sky) 
+                                      + Dark Current + Noises
                           'Source'  : Source + Sky + Noises
                           'Sky'     : Sky + shot_noise
                           'DC'      : Dark Current + DNFP
-                          'QE'      : Quantum efficiency fluctuation across detector
+                          'QE'      : Quantum efficiency fluctuation 
+                                      across detector
                           'Bias'    : Charge offset
                           'PRNU'    : Photon Response Non-Uniformity
                           'DNFP'    : Dark Noise Fixed Pattern
@@ -441,7 +447,8 @@ class Analyzer():
         Source: str,
             Choose from
                           'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky) + Dark Current
+                          'Charge'  : electrons, Light(Source + sky) 
+                                          + Dark Current
                                           + Noises
                           'Source'  : Source + Sky + Noises
                           'Sky'     : Sky + shot_noise
@@ -456,8 +463,12 @@ class Analyzer():
         """
 
         if np.all(self.image) is not None:
-            if user_source is not None and isinstance(user_source) == np.ndarray:
-                data = user_source
+            if user_source is not None: 
+                if isinstance(user_source) == np.ndarray:
+                    data = user_source
+                else:
+                    raise Exception("Input is not an array")
+
             elif source == 'Digital':
                 data = self.digital
             elif source == 'Charge':

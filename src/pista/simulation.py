@@ -24,7 +24,7 @@ class Imager(Analyzer):
     information to simulate image based on user defined telescope
     and detector characteristics
     """
-    def __init__(self, df, coords=None, tel_params={}, n_x=1000,
+    def __init__(self, df, coords=None, tel_params=None, n_x=1000,
                  n_y=1000, exp_time=100, plot=False, user_profiles=None,
                  **kwargs):
         """
@@ -76,7 +76,7 @@ class Imager(Analyzer):
                            'coeffs': 1,
                            'theta': 0
                            }
-        
+
         self.user_profiles = {
                               'sky': None,
                               'PRNU': None,
@@ -88,8 +88,8 @@ class Imager(Analyzer):
                              }
         if user_profiles is not None:
             self.user_profiles.update(user_profiles)
-
-        self.tel_params.update(tel_params)
+        if tel_params is not None:
+            self.tel_params.update(tel_params)
         self.tel_params.update(kwargs)
 
         self.det_params = {

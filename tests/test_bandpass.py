@@ -1,14 +1,16 @@
 """This modules contains several test routines for
 different modules in this python package"""
-
-from src.pista.utils import bandpass
+from pathlib import Path
+from pista.utils import bandpass
 import numpy as np
+
+data_path = Path(__file__).parent.joinpath()
 
 
 def test_zeropoint():
+    """Testing if zero point in AB system is 3631"""
     wav = np.arange(1000, 10000, 1)
     flux = 3631/(wav**2*3.34e4)
-    data_path = 'src/pista/data'
     inputs = [
                 f'{data_path}/INSIST/UV/Coating.dat,5,100',
                 f'{data_path}/INSIST/UV/Filter.dat,1,100',

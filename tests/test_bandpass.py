@@ -1,11 +1,9 @@
 """This modules contains several test routines for
 different modules in this python package"""
-from pathlib import Path
-from pista.utils import bandpass
 import numpy as np
+from pista.utils import bandpass
 
-data_path = Path(__file__).parent.joinpath()
-
+data_path = 'src/pista/data'
 
 def test_zeropoint():
     """Testing if zero point in AB system is 3631"""

@@ -7,7 +7,7 @@ from .utils import bandpass
 from .analysis import *
 import cv2
 
-from reproject import reproject_interp, reproject_exact
+from reproject import reproject_interp
 from reproject.mosaicking import reproject_and_coadd
 from reproject.mosaicking import find_optimal_celestial_wcs
 

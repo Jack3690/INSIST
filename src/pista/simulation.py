@@ -2,7 +2,6 @@
     Spectroscopic modes"""
 from astropy.wcs import WCS
 from astropy.io import fits
-import os
 from pathlib import Path
 import json
 import requests

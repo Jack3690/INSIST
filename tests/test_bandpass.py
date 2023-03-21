@@ -5,6 +5,7 @@ from pista.utils import bandpass
 
 data_path = 'src/pista/data'
 
+
 def test_zeropoint():
     """Testing if zero point in AB system is 3631"""
     wav = np.arange(1000, 10000, 1)

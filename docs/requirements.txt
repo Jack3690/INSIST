@@ -1,3 +1,4 @@
+furo
 sphinx
 insist-pista
 jupyter-sphinx

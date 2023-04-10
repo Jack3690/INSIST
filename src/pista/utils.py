@@ -1,6 +1,7 @@
 """This module contains additional functions for the package"""
 from pathlib import Path
 from astropy.modeling import models
+from astropy.cosmology import WMAP9 as cosmo
 import seaborn as sb
 import matplotlib.pyplot as plt
 import matplotlib
@@ -138,21 +139,37 @@ def generate_psf(npix, sigma, function='Gaussian'):
     return psf
 
 
-def spectra_to_mags(spec_df, inputs):
-    """Function for converting spectra into magnitudes using response
-    functions"""
+def redshift_corr(df):
+    """
+    Function for redshift correction of input data
+    """
+    z_diff = df['z2'].value.reshape(-1, 1)-df['z1'].value.reshape(-1, 1)
+    df['wav'] = df['wav'].value*(1 + z_diff)
+    d1 = cosmo.luminosity_distance(df['z1'])
+    d2 = cosmo.luminosity_distance(df['z2'])
+    flux_corr = (d1/d2)**2
+
+    df['flux'] = df['flux'].value*flux_corr.reshape(-1, 1)
+
+    return df
+
+
+def spectra_to_mags(df, inputs):
     mags = []
-    for row in spec_df:
+    if 'z1' in df.keys() and 'z2' in df.keys():
+        df = redshift_corr(df)
+    for row in df:
         wav = row['wav']
         flux = row['flux']
-        out = bandpass(wav, flux, inputs=inputs,
+        out = bandpass(wav, flux,  inputs=inputs,
                        plot=False)
         params = out[3]
-        int_fluxjy = params[2]
-        ab_mag = -2.5*np.log10(int_fluxjy/3631)
+        int_flux_Jy = params[2]
+        ABmag = -2.5*np.log10(int_flux_Jy/3631)
 
-        if ab_mag == np.nan:
-            ab_mag = 100
-        mags.append(ab_mag)
-    spec_df['mag'] = mags
-    return spec_df
+        if ABmag == np.nan:
+            ABmag = 100
+        mags.append(ABmag)
+    df['mag'] = mags
+
+    return df[['ra', 'dec', 'mag']]

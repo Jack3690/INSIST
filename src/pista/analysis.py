@@ -496,3 +496,59 @@ class Analyzer():
             hdul.writeto(f'{name}', overwrite=True)
         else:
             print("Run Simulation")
+
+
+class SpecAnalyzer(object):
+
+    def __init__(self):
+        """
+        A class to visualize and analyze the simulated image
+
+        Parameters
+        ----------
+        Imager.init()
+
+        Returns
+        -------
+        None.
+
+        """
+    def extract(self, data, wcs, df, width=2):
+
+        """
+        Extracts Spectra for Slitless Spectroscopy
+
+        """
+        c = SkyCoord(df['ra'], df['dec'], unit=u.deg)
+        pix = wcs.world_to_array_index(c)
+        positions = [(i, j) for i, j in zip(pix[1], pix[0])]
+
+        bin_mid = len(self.spec_bins)//2
+
+        fluxes = []
+        for i, j in positions:
+
+            start = i-bin_mid if i-bin_mid >= 0 else 0
+            end = i+bin_mid if i+bin_mid <= self.n_x else self.n_x
+            flux = data[j-width-1:j + width, start:end+1]
+
+            fluxes.append(flux.sum(axis=0))
+
+        self.phot_table = df[['ra', 'dec', 'z1', 'z2']]
+        self.phot_table['flux'] = fluxes
+
+        def generate_cal_flux(self, source_indices=[0, 1, 2]):
+
+            z = zip(self.img_df['wav'][source_indices],
+                    self.img_df['flux'][source_indices],
+                    self.phot_table['flux'][source_indices],
+                    )
+            cal_flux = 0
+
+            for in_wav, in_flux, out_flux in z:
+                binned_input = self.bin_xy(in_wav, in_flux)
+                cal_flux += binned_input/out_flux
+
+            cal_flux /= len(source_indices)
+
+            self.cal_flux = cal_flux

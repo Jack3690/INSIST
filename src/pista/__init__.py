@@ -4,4 +4,8 @@ __credits__ = 'Indian Institute of Astrophysics'
 
 from .simulation import Imager
 from .simulation import Mosaic
+from .simulation import Spectrometer
 from .analysis import Analyzer
+from pathlib import Path
+
+data_dir = Path(__file__).parent.joinpath() / 'data'

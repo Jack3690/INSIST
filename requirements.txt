@@ -8,3 +8,4 @@ astropy
 scipy
 photutils
 opencv-python
+torch

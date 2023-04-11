@@ -6,3 +6,4 @@ numpy
 seaborn
 opencv-python
 reproject
+torch

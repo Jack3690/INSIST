@@ -29,4 +29,4 @@ def test_Imager():
     sim = Imager(df=df, tel_params=tel_params, n_x=200, n_y=200,
                  exp_time=1)
     sim()
-    assert np.round(sim.phot_table['mag_out'][0],0) == 18
+    assert np.round(sim.phot_table['mag_out'][0], 0) == 18

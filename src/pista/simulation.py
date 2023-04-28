@@ -574,9 +574,46 @@ class Imager(Analyzer):
 
         return image
 
+    def make_ccd_image(self, light_array):
+        # Compute Coefficient arrays
+        self.compute_coeff_arrays()
+
+        # QE pixel to pixel variation | Source photoelectrons
+        self.source_photoelec = light_array*self.det_params['qe_mean']
+
+        # Photon Response (Quantum Efficiency) Non Uniformity
+        if self.PRNU:
+            self.source_photoelec *= (1+self.PRNU_array)
+
+        # Dark Current. Includes DCNU, DNFP and shot noise
+        self.photoelec_array = self.source_photoelec + self.DC_array
+
+        # Addition of Quantization error, Bias and Noise floor
+        self.charge = self.photoelec_array + self.QN_array \
+                                           + self.det_params['NF'] \
+                                           + self.bias_array
+
+        # Photoelec to ADUs
+        digital = (self.charge*self.gain).astype(int)
+
+        # Full well condition
+        digital = np.where(digital >= pow(2, self.det_params['bit_res']),
+                           pow(2, self.det_params['bit_res']), digital)
+        return digital
+
+    @property
+    def dark_frame(self):
+        return self.make_ccd_image(0)
+
+    @property
+    def flat_frame(self):
+        flat = self.make_ccd_image(10)
+        flat = flat/flat.max()
+        return flat
+
     def __call__(self, det_params=None, n_stack=1, stack_type='median',
                  photometry='Aper', fwhm=3, sigma=3, detect_sources=False,
-                 zero_point=None, **kwargs):
+                 ZP=None, **kwargs):
         """
           Parameters
           ----------
@@ -652,7 +689,6 @@ class Imager(Analyzer):
         for i in range(n_stack):
 
             self.init_image_array()
-            self.compute_coeff_arrays()
 
             # Source photons
             self.source_photons = self.generate_photons(self.image,
@@ -666,28 +702,8 @@ class Imager(Analyzer):
                 type_ = self.det_params['shot_noise']
                 self.light_array = self.compute_shot_noise(self.light_array,
                                                            type_=type_)
-            # QE pixel to pixel variation | Source photoelectrons
-            self.light_array = self.light_array*self.det_params['qe_mean']
+            self.digital = self.make_ccd_image(self.light_array)
 
-            # Photon Response (Quantum Efficiency) Non Uniformity
-            if self.PRNU:
-                self.light_array *= (1+self.PRNU_array)
-
-            # Dark Current. Includes DCNU, DNFP and shot noise
-            self.photoelec_array = self.light_array + self.DC_array
-
-            # Addition of Quantization error, Bias and Noise floor
-            self.charge = self.photoelec_array + self.QN_array \
-                                               + self.det_params['NF'] \
-                                               + self.bias_array
-            # Photoelec to ADUs
-            self.digital = (self.charge*self.gain).astype(int)
-
-            # Full well condition
-            br = pow(2, self.det_params['bit_res'])
-            self.digital = np.where(self.digital >= br,
-                                    pow(2, self.det_params['bit_res']),
-                                    self.digital)
             digital_stack.append(self.digital)
 
         digital_stack = np.array(digital_stack)
@@ -728,10 +744,8 @@ class Imager(Analyzer):
 
         super().__call__(df=self.img_df, wcs=self.wcs,
                          data=self.digital.astype(float),
-                         photometry=photometry,
-                         fwhm=fwhm, sigma=sigma,
-                         detect_sources=detect_sources,
-                         zero_point=zero_point)
+                         photometry=photometry, fwhm=fwhm, sigma=sigma,
+                         detect_sources=detect_sources, ZP=ZP)
 
     def add_distortion(self, xmap, ymap):
         self.x_map = xmap

@@ -12,56 +12,56 @@ from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.coordinates import SkyCoord
 from astropy.stats import sigma_clipped_stats
 from astropy import units as u
+from .utils import Xmatch
 
 import numpy as np
 
 
-class Analyzer():
-    """Analyzer class is used for visualizing the simulated images and for
-    peforming photometry"""
-
+class Analyzer(object):
     def __init__(self):
         """
         A class to visualize and analyze the simulated image
+
         Parameters
         ----------
         Imager.init()
+
         Returns
         -------
         None.
 
         """
-
     def __call__(self, df=None, wcs=None, data=None,
-                 photometry=None, detect_sources=False, fwhm=3, sigma=3,
-                 zero_point=None):
+                 photometry=None, detect_sources=False, fwhm=3, sigma=13,
+                 ZP=None):
         """
         Performs sim simulation and sim Photometry
 
         Imager.call()
+
         do_photometry : Bool, Default : True
                         Do Aperture Photometry
         """
         self.photometry_type = photometry
         if photometry == 'Aper':
             self.aper_photometry(data, wcs, df, fwhm, sigma, detect_sources,
-                                 zero_point)
+                                 ZP)
         elif photometry == 'PSF':
-            self.psf_photometry(data, wcs, df, fwhm, sigma, zero_point)
+            self.psf_photometry(data, wcs, df, fwhm, sigma, ZP)
 
-    def aper_photometry(self, data, wcs, input_df, fwhm, sigma, detect,
-                        zero_point):
-        """This function performs PSF photometry using Photutils DAOPhot
-        Method"""
+    def aper_photometry(self, data, wcs, df, fwhm, sigma, detect, ZP):
+
         # Calculate zero point
-        if zero_point is None:
+        if ZP is None:
             zero_p_flux = self.zero_flux + self.sky_bag_flux
             zero_p_flux += np.mean(self.DR)*self.exp_time
             zero_p_flux += self.det_params['NF'] + self.det_params['bias']
 
             zero_p_flux *= self.gain*0.9499142715255932
+            zero_p_mag = 2.5*np.log10(zero_p_flux)
+
         else:
-            zero_p_flux = zero_point
+            zero_p_mag = ZP
 
         # if detect flag is set to True, detect sources in the image
         if detect:
@@ -73,14 +73,15 @@ class Analyzer():
             # detect sources in the image
             sources = daofind(data)
             # get the source positions
-            positions = np.transpose(
-                (sources['xcentroid'], sources['ycentroid']))
+            positions = np.transpose((sources['xcentroid'],
+                                      sources['ycentroid']))
+
         else:
 
             # create SkyCoord object from ra and dec values in the dataframe
-            coords = SkyCoord(input_df['ra'], input_df['dec'], unit=u.deg)
+            c = SkyCoord(df['ra'], df['dec'], unit=u.deg)
             # convert the sky coordinates to pixel coordinates
-            pix = wcs.world_to_array_index(coords)
+            pix = wcs.world_to_array_index(c)
             positions = [(i, j) for i, j in zip(pix[1], pix[0])]
 
         # create circular aperture object
@@ -102,28 +103,41 @@ class Analyzer():
         phot_table['flux'] = phot_table['aperture_sum_0'].value - \
             phot_table['sky_flux'].value
         # calculate error on the source flux
-        phot_table['flux_err'] = np.sqrt(
-            phot_table['flux'].value + phot_table['sky_flux'].value)
+        phot_table['flux_err'] = np.sqrt(phot_table['flux'].value +
+                                         phot_table['sky_flux'].value)
 
         # calculate signal to noise ratio
-        phot_table['SNR'] = phot_table['flux'].value / \
-            phot_table['flux_err'].value
+        phot_table['SNR'] = phot_table['flux']/phot_table['flux_err']
 
-        if not detect and zero_point is None and len(phot_table) > 2:
-            phot_table['mag_in'] = input_df['mag'].values
-            phot_table['ra'] = input_df['ra'].values
-            phot_table['dec'] = input_df['dec'].values
-            if len(phot_table) > 3:
-                zero_p_flux = 0
+        if not detect:
 
-                for i in range(3):
-                    flux = pow(10, -0.4*phot_table['mag_in'].value[i])
-                    zero_p_flux += phot_table['flux'].value[i]/flux
-                zero_p_flux /= 3
+            phot_table['ra'] = df['ra'].values
+            phot_table['dec'] = df['dec'].values
+            phot_table['mag_in'] = df['mag'].values
 
-        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux']/zero_p_flux)
+        else:
+            coords = np.array(wcs.pixel_to_world_values(positions))
+
+            phot_table['ra'] = coords[:, 0]
+            phot_table['dec'] = coords[:, 1]
+
+            matched = Xmatch(phot_table, df, 3*fwhm)
+            mag_in = []
+            sep = []
+            for i, j, k in matched:
+                if j is not None:
+                    mag_in.append(df['mag'].values[j])
+                    sep.append(k)
+                else:
+                    mag_in.append(np.nan)
+                    sep.append(np.nan)
+
+            phot_table['mag_in'] = mag_in
+            phot_table['sep'] = sep
+
+        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux']) + zero_p_mag
         phot_table['mag_err'] = 1.082/phot_table['SNR']
-        self.header['ZP'] = zero_p_flux
+        self.header['ZP'] = zero_p_mag
 
         self.header['EXPTIME'] = self.exp_time
         self.header['BUNIT'] = 'DN'
@@ -133,7 +147,7 @@ class Analyzer():
         phot_table['dec'] = coords[:, 1]
         self.phot_table = phot_table
 
-    def psf_photometry(self, data, wcs, input_df, fwhm, sigma, ZP):
+    def psf_photometry(self, data, wcs, df, fwhm, sigma, ZP):
 
         mean, median, std = sigma_clipped_stats(data, sigma=3)
 
@@ -147,31 +161,46 @@ class Analyzer():
                                           psf_model=psf_model,
                                           fitter=LevMarLSQFitter(),
                                           fitshape=(11, 11),
-                                          niters=1)
+                                          niters=3)
 
-        result_tab = photometry(image=data)
-        positions = np.array([result_tab['x_fit'], result_tab['y_fit']]).T
+        phot_table = photometry(image=data)
+        positions = np.array([phot_table['x_fit'], phot_table['y_fit']]).T
         coords = np.array(wcs.pixel_to_world_values(positions))
 
-        result_tab['ra'] = coords[:, 0]
-        result_tab['dec'] = coords[:, 1]
-        result_tab['SNR'] = result_tab['flux_fit']/result_tab['flux_unc']
+        phot_table['ra'] = coords[:, 0]
+        phot_table['dec'] = coords[:, 1]
+        phot_table['SNR'] = phot_table['flux_fit']/phot_table['flux_unc']
 
         if ZP is None:
             zero_p_flux = self.zero_flux + self.sky_bag_flux
-            zero_p_flux += np.mean(self.DR)*self.exp_time + \
-                self.det_params['NF'] + self.det_params['bias']
+            zero_p_flux += np.mean(self.DR)*self.exp_time
+            zero_p_flux += self.det_params['NF'] + self.det_params['bias']
             zero_p_flux *= self.gain
+            zero_p_mag = 2.5*np.log10(zero_p_flux)
         else:
-            zero_p_flux = ZP
+            zero_p_mag = ZP
 
-        result_tab['mag_out'] = -2.5 * \
-            np.log10(result_tab['flux_fit']/zero_p_flux)
-        result_tab['mag_err'] = 1.082/result_tab['SNR']
+        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux_fit'])
+        phot_table['mag_out'] += zero_p_mag
+        phot_table['mag_err'] = 1.082/phot_table['SNR']
 
-        self.header['ZP'] = zero_p_flux
+        matched = Xmatch(phot_table, df, 3*fwhm)
+        mag_in = []
+        sep = []
+        for i, j, k in matched:
+            if j is not None:
+                mag_in.append(df['mag'].values[j])
+                sep.append(k)
+            else:
+                mag_in.append(np.nan)
+                sep.append(np.nan)
 
-        self.phot_table = result_tab
+        phot_table['mag_in'] = mag_in
+        phot_table['sep'] = sep
+
+        self.header['ZP'] = zero_p_mag
+
+        self.phot_table = phot_table
 
     def show_field(self, figsize=(10, 10), marker='.', cmap='jet'):
         """
@@ -180,23 +209,22 @@ class Analyzer():
         Parameters
         ----------
         figsize : tuple,
-                  Figure size
+                Figure size
 
         Returns
         -------
         fig, ax
         """
-        # Cropping data frame to show source within n_x x n_y
-
+        # Cropping Dataframe based on FoV
         x_min_cut = (self.df['x'] > self.n_pix_sub - 1)
         x_max_cut = (self.df['x'] < self.n_y_sim - self.n_pix_sub - 1)
 
-        img_df = self.df[x_min_cut & x_max_cut]
+        df = self.df[x_min_cut & x_max_cut]
 
         y_min_cut = (self.df['y'] > self.n_pix_sub - 1)
         y_max_cut = (self.df['y'] < self.n_x_sim - self.n_pix_sub - 1)
 
-        img_df = img_df[y_min_cut & y_max_cut]
+        df = df[y_min_cut & y_max_cut]
 
         fov_x = (self.n_x*self.pixel_scale)/3600
         fov_y = (self.n_y*self.pixel_scale)/3600
@@ -206,14 +234,14 @@ class Analyzer():
 
         fig, ax = plt.subplots(1, 1, figsize=figsize)
 
-        x = img_df['ra']
-        y = img_df['dec']
-        c = img_df['mag']
+        x = df['ra']
+        y = df['dec']
+        c = df['mag']
 
         img = ax.scatter(x, y, c=c, marker=marker, cmap=cmap)
         cb = plt.colorbar(img)
         cb.set_label('mag (ABmag)')
-        ax.set_title(f"""Requested Center : {self.name} | {len(img_df)} sources
+        ax.set_title(f"""Requested Center : {self.name} | {len(df)} sources
         Fov(RA) : {fov_x} (deg) | Fov(Dec) : {fov_y} (deg)""")
         ax.invert_xaxis()
 
@@ -231,13 +259,13 @@ class Analyzer():
         Source: str,
                 Choose from
                             'Digital' : Final digial image
-                            'Charge'  : electrons, Light(Source + sky)
-                                        + Dark Current + Noises
+                            'Charge'  : electrons, Light(Source + sky) +
+                                         Dark Current + Noises
                             'Source'  : Source + Sky + Noises
                             'Sky'     : Sky + shot_noise
                             'DC'      : Dark Current + DNFP
-                            'QE'      : Quantum efficiency fluctuation
-                                          across detector
+                            'QE'      : Quantum efficiency fluctuation across
+                                        detector
                             'Bias'    : Charge offset
                             'PRNU'    : Photon Response Non-Uniformity
                             'DNFP'    : Dark Noise Fixed Pattern
@@ -245,22 +273,22 @@ class Analyzer():
 
 
         fig : matplotlib.pyplot.figure
-              User defined figure
+            User defined figure
         ax  : matplotlib.pyplot.axes
-              User defined axes
+            User defined axes
         cmap : str,
-              matplotlib.pyplot colormap
+            matplotlib.pyplot colormap
         figsize : tuple
         download : bool
         show_wcs : bool
-                  If true adds WCS projection to the image
+                If true adds WCS projection to the image
         Returns
         -------
         Image
 
         fig, ax
         """
-        if np.all(self.image) is not None:
+        if self.image is not None:
             if fig is None or ax is None:
                 fig = plt.figure(figsize=figsize)
                 if show_wcs:
@@ -331,29 +359,29 @@ class Analyzer():
 
         Source: str,
                 Choose from
-                          'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky)
-                                      + Dark Current + Noises
-                          'Source'  : Source + Sky + Noises
-                          'Sky'     : Sky + shot_noise
-                          'DC'      : Dark Current + DNFP
-                          'QE'      : Quantum efficiency fluctuation
-                                       across detector
-                          'Bias'    : Charge offset
-                          'PRNU'    : Photon Response Non-Uniformity
-                          'DNFP'    : Dark Noise Fixed Pattern
-                          'QN'      : Quantization Noise
+                        'Digital' : Final digial image
+                        'Charge'  : electrons, Light(Source + sky)
+                                    + Dark Current + Noises
+                        'Source'  : Source + Sky + Noises
+                        'Sky'     : Sky + shot_noise
+                        'DC'      : Dark Current + DNFP
+                        'QE'      : Quantum efficiency fluctuation across
+                                    detector
+                        'Bias'    : Charge offset
+                        'PRNU'    : Photon Response Non-Uniformity
+                        'DNFP'    : Dark Noise Fixed Pattern
+                        'QN'      : Quantization Noise
 
         bins : numpy.array,
-              bins for making histogram
+            bins for making histogram
         fig : matplotlib.pyplot.figure
-              User defined figure
+            User defined figure
         ax  : matplotlib.pyplot.axes
-              User defined axes
+            User defined axes
         figsize : tuple
         """
 
-        if np.all(self.image) is not None:
+        if self.image is not None:
             if fig is None or ax is None:
                 fig, ax = plt.subplots(1, 1, figsize=figsize)
 
@@ -386,7 +414,7 @@ class Analyzer():
         else:
             print("Run Simulation")
 
-    def get_image(self, source='Digital'):
+    def getImage(self, source='Digital'):
         """
         Function of retrieving image array at different stages of simulation.
 
@@ -395,21 +423,21 @@ class Analyzer():
 
         Source: str,
             Choose from
-                          'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky)
-                                      + Dark Current + Noises
-                          'Source'  : Source + Sky + Noises
-                          'Sky'     : Sky + shot_noise
-                          'DC'      : Dark Current + DNFP
-                          'QE'      : Quantum efficiency fluctuation
-                                      across detector
-                          'Bias'    : Charge offset
-                          'PRNU'    : Photon Response Non-Uniformity
-                          'DNFP'    : Dark Noise Fixed Pattern
-                          'QN'      : Quantization Noise
+                        'Digital' : Final digial image
+                        'Charge'  : electrons, Light(Source + sky)
+                                    + Dark Current + Noises
+                        'Source'  : Source + Sky + Noises
+                        'Sky'     : Sky + shot_noise
+                        'DC'      : Dark Current + DNFP
+                        'QE'      : Quantum efficiency fluctuation across
+                                    detector
+                        'Bias'    : Charge offset
+                        'PRNU'    : Photon Response Non-Uniformity
+                        'DNFP'    : Dark Noise Fixed Pattern
+                        'QN'      : Quantization Noise
         """
 
-        if np.all(self.image) is not None:
+        if self.image is not None:
             if source == 'Digital':
                 data = self.digital
             elif source == 'Charge':
@@ -435,39 +463,34 @@ class Analyzer():
             print("Run Simulation")
 
     def writeto(self, name, source='Digital', user_source=None):
+
         """
         Function for downloading a fits file of simulated field image
 
         Parameters
         ----------
         name : str
-              filename, Example : simulation.fits
+            filename, Example : simulation.fits
 
         Source: str,
             Choose from
-                          'Digital' : Final digial image
-                          'Charge'  : electrons, Light(Source + sky)
-                                          + Dark Current
-                                          + Noises
-                          'Source'  : Source + Sky + Noises
-                          'Sky'     : Sky + shot_noise
-                          'DC'      : Dark Current + DNFP
-                          'Bias'    : Charge offset
-                          'PRNU'    : Photon Response Non-Uniformity
-                          'DNFP'    : Dark Noise Fixed Pattern
-                          'QN'      : Quantization Noise
+                        'Digital' : Final digial image
+                        'Charge'  : electrons, Light(Source + sky)
+                                    + Dark Current + Noises
+                        'Source'  : Source + Sky + Noises
+                        'Sky'     : Sky + shot_noise
+                        'DC'      : Dark Current + DNFP
+                        'Bias'    : Charge offset
+                        'PRNU'    : Photon Response Non-Uniformity
+                        'DNFP'    : Dark Noise Fixed Pattern
+                        'QN'      : Quantization Noise
 
         user_source : numpy.ndarray
-                      2D numpy array user wants to save as FITS
+                    2D numpy array user wants to save as FITS
         """
-
-        if np.all(self.image) is not None:
-            if user_source is not None:
-                if isinstance(user_source) == np.ndarray:
-                    data = user_source
-                else:
-                    raise Exception("Input is not an array")
-
+        if self.image is not None:
+            if user_source is not None and type(user_source) == np.ndarray:
+                data = user_source
             elif source == 'Digital':
                 data = self.digital
             elif source == 'Charge':

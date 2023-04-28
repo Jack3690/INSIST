@@ -2,6 +2,9 @@
 from pathlib import Path
 from astropy.modeling import models
 from astropy.cosmology import WMAP9 as cosmo
+from astropy.coordinates import angular_separation
+from astropy.table import Table
+import astropy.units as u
 import seaborn as sb
 import matplotlib.pyplot as plt
 import matplotlib
@@ -84,8 +87,15 @@ def bandpass(wav, flux, inputs, plot=True, fig=None, ax=None):
     lambda_phot = np.trapz(lambda_**2*conv_flux,
                            lambda_)/np.trapz(lambda_*conv_flux, lambda_)
 
-    R_sq = np.where(R_eff > 0, 1, 0)
+    c1 = lambda_ >= lambda_phot-W_eff/2
+    c2 = lambda_ <= lambda_phot+W_eff/2
+
+    R_sq = np.where((c1 & c2), 1, 0)
     flux_ratio = np.trapz(R_eff, lambda_)/np.trapz(R_sq, lambda_)
+
+    if plot:
+        ax.plot(lambda_, R_sq,
+                label="Square Filter", alpha=0.7)
 
     # Frequency space
     R_eff_Jy = R_eff*lambda_**2*3.34e4
@@ -173,3 +183,27 @@ def spectra_to_mags(df, inputs):
     df['mag'] = mags
 
     return df[['ra', 'dec', 'mag']]
+
+
+def Xmatch(df1, df2, r=1):
+    if isinstance(df1, Table):
+        df1 = df1.to_pandas()
+
+    if isinstance(df2, Table):
+        df2 = df2.to_pandas()
+
+    # define the catalogs
+    matched = []
+    for i, row in df1.iterrows():
+        dist = angular_separation(row['ra'], row['dec'],
+                                  df2['ra'].values, df2['dec'].values)
+        dist = dist*u.radian
+        dist = dist.to(u.arcsec).value
+
+        if dist.min() <= r:
+            index = np.where(dist == dist.min())[0][0]
+            matched.append([i, index, dist.min()])
+        else:
+            matched.append([i, None, None])
+
+    return matched

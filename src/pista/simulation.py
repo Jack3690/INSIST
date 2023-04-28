@@ -21,7 +21,7 @@ from .utils import redshift_corr
 from .analysis import Analyzer
 from .analysis import SpecAnalyzer
 
-data_path = Path(__file__).parent.joinpath() / 'data/'
+data_path = Path(__file__).parent.joinpath('data')
 
 
 class Imager(Analyzer):

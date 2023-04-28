@@ -1,4 +1,5 @@
 furo
 sphinx
 insist-pista
+ipython
 jupyter-sphinx

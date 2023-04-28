@@ -153,11 +153,15 @@ def redshift_corr(df):
     """
     Function for redshift correction of input data
     """
-    z_diff = df['z2'].value.reshape(-1, 1)-df['z1'].value.reshape(-1, 1)
-    df['wav'] = df['wav'].value*(1 + z_diff)
-    d1 = cosmo.luminosity_distance(df['z1'])
-    d2 = cosmo.luminosity_distance(df['z2'])
-    flux_corr = (d1/d2)**2
+    if 'z1' in df.keys() and 'z2' in df.keys():
+        red_corr = df['z2'].value.reshape(-1, 1)-df['z1'].value.reshape(-1, 1)
+        df['wav'] = df['wav'].value + red_corr
+        d1 = cosmo.luminosity_distance(df['z1'])
+        d2 = cosmo.luminosity_distance(df['z2'])
+        flux_corr = (d1/d2)**2
+
+    elif 'd1' in df.keys() and 'd2' in df.keys():
+        flux_corr = (df['d1'].value/df['d2'].value)**2
 
     df['flux'] = df['flux'].value*flux_corr.reshape(-1, 1)
 
@@ -166,12 +170,17 @@ def redshift_corr(df):
 
 def spectra_to_mags(df, inputs):
     mags = []
-    if 'z1' in df.keys() and 'z2' in df.keys():
+    c1 = ('z1' in df.keys() and 'z2' in df.keys())
+    c2 = ('d1' in df.keys() and 'd2' in df.keys())
+    if c1 or c2:
         df = redshift_corr(df)
+    else:
+        KeyError("z1 and z2 or d1 and d2")
+
     for row in df:
         wav = row['wav']
         flux = row['flux']
-        out = bandpass(wav, flux,  inputs=inputs,
+        out = bandpass(wav, flux, inputs=inputs,
                        plot=False)
         params = out[3]
         int_flux_Jy = params[2]
@@ -186,6 +195,8 @@ def spectra_to_mags(df, inputs):
 
 
 def Xmatch(df1, df2, r=1):
+    """Function for crossmatching two
+    catalogs using RAs and Decs"""
     if isinstance(df1, Table):
         df1 = df1.to_pandas()
 

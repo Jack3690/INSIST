@@ -102,22 +102,22 @@ class Imager(Analyzer):
 
         self.det_params = {
                           'shot_noise': 'Gaussian',
-                          'M_sky':  27,
-                          'qe_response':  [],         # Wavelength dependence
-                          'qe_mean':  0.95,        # Effective QE
-                          'bias':  35,         # electrons
-                          'G1':  1,
-                          'bit_res':  14,
-                          'RN':  5,          # elec/pix
-                          'PRNU_frac':  0.25/100,   # PRNU sigma
-                          'T':  223,        # K
-                          'DFM':  1.424e-2,   # 14.24 pA
-                          'pixel_area':  1e-6,       # cm2
-                          'DCNU':  0.1/100,    # percentage
-                          'DNFP':  0.,          # electrons
-                          'NF':  0.,          # electrons
-                          'FWC':  1.4e5,      # electrons
-                          'C_ray_r':  2/50        # hits/second
+                          'M_sky': 27,
+                          'qe_response':  [],     # Wavelength dependence
+                          'qe_mean': 0.95,        # Effective QE
+                          'bias': 35,             # electrons
+                          'G1': 1,
+                          'bit_res': 14,
+                          'RN':  5,               # elec/pix
+                          'PRNU_frac': 0.25/100,  # PRNU sigma
+                          'T': 218,               # K
+                          'DFM': 1.424e-2,        # 14.24 pA
+                          'pixel_area': 1e-6,     # cm2
+                          'DCNU': 0.1/100,        # percentage
+                          'DNFP': 0.,             # electrons
+                          'NF': 0.,               # electrons
+                          'FWC': 1.4e5,           # electrons
+                          'C_ray_r': 2/50         # hits/second
                           }
 
         self.det_params.update(kwargs)
@@ -245,6 +245,20 @@ class Imager(Analyzer):
         self.zero_flux *= self.coeffs
         self.M_sky_p = self.det_params['M_sky'] \
             - 2.5*np.log10(self.pixel_scale**2)
+        self.sky_bag_flux = self.zero_flux*pow(10, -0.4*self.M_sky_p)
+
+        if self.sky:
+            if self.user_profiles['sky'] is not None:
+                if self.user_profiles['sky'].shape == (self.n_x, self.n_y):
+                    self.sky_photons = self.user_profiles['sky']
+                else:
+                    raise Exception(f"""User defined sky array shape: \
+                    {self.user_profiles['sky'].shape} \
+                    is not same as detector shape {(self.n_x, self.n_y)}""")
+            else:
+                self.sky_photons = self.compute_shot_noise(self.sky_bag_flux)
+        else:
+            self.sky_photons = 0
 
     def init_psf_patch(self, return_psf=False):
         """Creates PSF array from NPY or fits files"""
@@ -257,7 +271,6 @@ class Imager(Analyzer):
 
         image /= image.sum()  # Flux normalized to 1
         self.image_g_sub = image
-        self.sky_bag_flux = self.zero_flux*pow(10, -0.4*self.M_sky_p)
 
         self.n_pix_sub = self.image_g_sub.shape[0]
 
@@ -397,19 +410,6 @@ class Imager(Analyzer):
         """
         n_x = self.n_y
         n_y = self.n_x
-
-        if self.sky:
-            if self.user_profiles['sky'] is not None:
-                if self.user_profiles['sky'].shape == (n_x, n_y):
-                    self.sky_photons = self.user_profiles['sky']
-                else:
-                    raise Exception(f"""User defined sky array shape: \
-                    {self.user_profiles['sky'].shape} \
-                    is not same as detector shape {(n_x,n_y)}""")
-            else:
-                self.sky_photons = self.compute_shot_noise(self.sky_bag_flux)
-        else:
-            self.sky_photons = 0
 
         if self.QE:
             if len(self.det_params['qe_response']) != 0:
@@ -748,6 +748,8 @@ class Imager(Analyzer):
                          detect_sources=detect_sources, ZP=ZP)
 
     def add_distortion(self, xmap, ymap):
+        """Function for addition distortion using
+        x and y mappings"""
         self.x_map = xmap
         self.y_map = ymap
         # Interpolation to be added
@@ -759,6 +761,8 @@ class Imager(Analyzer):
         self.digital = np.where(distorted_img > 0, distorted_img, 1)
 
     def remove_distortion(self):
+        """Function for returning the image to state
+        before adding distortion"""
         # undistort to be added
         self.digital = self.org_digital
 

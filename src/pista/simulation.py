@@ -745,7 +745,8 @@ class Imager(Analyzer):
         self.header['NF'] = self.det_params['NF']
 
         if ZP is None:
-            zero_p_flux = self.zero_flux + self.sky_bag_flux
+            QE = self.det_params['qe_mean']
+            zero_p_flux = self.zero_flux*QE + self.sky_bag_flux
             zero_p_flux += np.mean(self.DR)*self.exp_time
             zero_p_flux += self.det_params['NF'] + self.det_params['bias']
 

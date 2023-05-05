@@ -1,4 +1,3 @@
-furo
 sphinx
 insist-pista
 ipython

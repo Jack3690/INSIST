@@ -1,3 +1,4 @@
+urllib3<2
 sphinx
 insist-pista
 ipython

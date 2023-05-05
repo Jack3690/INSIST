@@ -497,6 +497,7 @@ class Imager(Analyzer):
                     self.DNFP_array = arr
                 self.DC_array += self.DNFP_array
         else:
+            self.DR = 0
             self.DC_array = 0
         # Quantization Noise
         if self.QN:

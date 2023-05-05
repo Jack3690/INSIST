@@ -32,7 +32,7 @@ class Analyzer(object):
 
         """
     def __call__(self, df=None, wcs=None, data=None,
-                 photometry=None, detect_sources=False, fwhm=3, sigma=13,
+                 photometry=None, detect_sources=False, fwhm=3, sigma=3,
                  ZP=None):
         """
         Performs sim simulation and sim Photometry
@@ -50,18 +50,6 @@ class Analyzer(object):
             self.psf_photometry(data, wcs, df, fwhm, sigma, ZP)
 
     def aper_photometry(self, data, wcs, df, fwhm, sigma, detect, ZP):
-
-        # Calculate zero point
-        if ZP is None:
-            zero_p_flux = self.zero_flux + self.sky_bag_flux
-            zero_p_flux += np.mean(self.DR)*self.exp_time
-            zero_p_flux += self.det_params['NF'] + self.det_params['bias']
-
-            zero_p_flux *= self.gain*0.9499142715255932
-            zero_p_mag = 2.5*np.log10(zero_p_flux)
-
-        else:
-            zero_p_mag = ZP
 
         # if detect flag is set to True, detect sources in the image
         if detect:
@@ -135,12 +123,9 @@ class Analyzer(object):
             phot_table['mag_in'] = mag_in
             phot_table['sep'] = sep
 
-        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux']) + zero_p_mag
+        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux']) + ZP
         phot_table['mag_err'] = 1.082/phot_table['SNR']
-        self.header['ZP'] = zero_p_mag
-
-        self.header['EXPTIME'] = self.exp_time
-        self.header['BUNIT'] = 'DN'
+        self.ZP = ZP
 
         coords = np.array(wcs.pixel_to_world_values(positions))
         phot_table['ra'] = coords[:, 0]
@@ -171,17 +156,8 @@ class Analyzer(object):
         phot_table['dec'] = coords[:, 1]
         phot_table['SNR'] = phot_table['flux_fit']/phot_table['flux_unc']
 
-        if ZP is None:
-            zero_p_flux = self.zero_flux + self.sky_bag_flux
-            zero_p_flux += np.mean(self.DR)*self.exp_time
-            zero_p_flux += self.det_params['NF'] + self.det_params['bias']
-            zero_p_flux *= self.gain
-            zero_p_mag = 2.5*np.log10(zero_p_flux)
-        else:
-            zero_p_mag = ZP
-
         phot_table['mag_out'] = -2.5*np.log10(phot_table['flux_fit'])
-        phot_table['mag_out'] += zero_p_mag
+        phot_table['mag_out'] += ZP
         phot_table['mag_err'] = 1.082/phot_table['SNR']
 
         matched = Xmatch(phot_table, df, 3*fwhm)
@@ -198,7 +174,7 @@ class Analyzer(object):
         phot_table['mag_in'] = mag_in
         phot_table['sep'] = sep
 
-        self.header['ZP'] = zero_p_mag
+        self.ZP = ZP
 
         self.phot_table = phot_table
 
@@ -462,7 +438,8 @@ class Analyzer(object):
         else:
             print("Run Simulation")
 
-    def writeto(self, name, source='Digital', user_source=None):
+    def writeto(self, name, source='Digital', user_source=None,
+                with_dark_flat=False):
 
         """
         Function for downloading a fits file of simulated field image
@@ -488,8 +465,8 @@ class Analyzer(object):
         user_source : numpy.ndarray
                     2D numpy array user wants to save as FITS
         """
-        if self.image is not None:
-            if user_source is not None and type(user_source) == np.ndarray:
+        if self.sim_flag:
+            if user_source is not None and isinstance(user_source, np.ndarray):
                 data = user_source
             elif source == 'Digital':
                 data = self.digital
@@ -515,7 +492,26 @@ class Analyzer(object):
 
             hdu = fits.PrimaryHDU(data, header=self.header)
             hdu.wcs = self.wcs
-            hdul = fits.HDUList([hdu])
+
+            hdu = fits.PrimaryHDU(data, header=self.header)
+            hdu.wcs = self.wcs
+            hdus = [hdu]
+
+            if with_dark_flat:
+                dark = self.dark_frame
+                header = self.header
+                header['Frame'] = 'Dark'
+
+                hdu = fits.ImageHDU(dark, header=header)
+                hdus.append(hdu)
+
+                flat = self.flat_frame
+                header['Frame'] = 'Flat'
+
+                hdu = fits.ImageHDU(flat, header=header)
+                hdus.append(hdu)
+
+            hdul = fits.HDUList(hdus)
             hdul.writeto(f'{name}', overwrite=True)
         else:
             print("Run Simulation")

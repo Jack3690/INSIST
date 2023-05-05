@@ -477,7 +477,7 @@ class Imager(Analyzer):
                                                 self.det_params['pixel_area'])
             # Dark Current Non-uniformity
             if self.DCNU:
-                sigma = self.exp_time*self.DR*self.det_params['DCNU']
+                sigma = self.det_params['DCNU']
                 self.DCNU_array = np.random.lognormal(mean=0,
                                                       sigma=sigma,
                                                       size=(n_x, n_y))
@@ -722,7 +722,8 @@ class Imager(Analyzer):
         self.wcs = self.create_wcs(self.n_x, self.n_y,
                                    self.ra, self.dec,
                                    self.pixel_scale, self.theta)
-
+        self.digital = self.digital.astype(np.int16)
+        self.org_digital = self.digital.copy()
         self.sim_flag = True
         # Filtering out sources within Image
         x_left = 0
@@ -736,17 +737,31 @@ class Imager(Analyzer):
                                    y_left=y_left, y_right=y_right)
 
         self.header = self.wcs.to_header()
-        self.header['gain'] = self.det_params['G1']
-        self.header['Temp'] = str(self.det_params['T']) + 'K'
-        self.header['bias'] = self.det_params['bias']
+        self.header['GAIN'] = self.det_params['G1']
+        self.header['TEMP'] = str(self.det_params['T']) + ' K'
+        self.header['BIAS'] = self.det_params['bias']
         self.header['RN'] = self.det_params['RN']
-        self.header['DR'] = np.mean(self.DR)
+        self.header['DR'] = str(np.round(np.mean(self.DR), 5))
         self.header['NF'] = self.det_params['NF']
+
+        if ZP is None:
+            zero_p_flux = self.zero_flux + self.sky_bag_flux
+            zero_p_flux += np.mean(self.DR)*self.exp_time
+            zero_p_flux += self.det_params['NF'] + self.det_params['bias']
+
+            zero_p_flux *= self.gain
+            ZP = 2.5*np.log10(zero_p_flux)
+            # Observed Zero Point Magnitude in DN
+            self.ZP = ZP
 
         super().__call__(df=self.img_df, wcs=self.wcs,
                          data=self.digital.astype(float),
                          photometry=photometry, fwhm=fwhm, sigma=sigma,
                          detect_sources=detect_sources, ZP=ZP)
+
+        self.header['EXPTIME'] = self.exp_time
+        self.header['BUNIT'] = 'DN'
+        self.header['ZP'] = self.ZP
 
     def add_distortion(self, xmap, ymap):
         """Function for addition distortion using
@@ -755,7 +770,7 @@ class Imager(Analyzer):
         self.y_map = ymap
         # Interpolation to be added
         data = self.digital.astype(float).copy()
-        self.org_digital = data
+
         distorted_img = cv2.remap(data, xmap.astype(np.float32),
                                   ymap.astype(np.float32), cv2.INTER_LANCZOS4)
         distorted_img = distorted_img.astype(int)

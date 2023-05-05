@@ -8,6 +8,7 @@ from photutils.detection import DAOStarFinder
 from photutils.psf import DAOPhotPSFPhotometry, FittableImageModel
 
 from astropy.io import fits
+from astropy.io.fits import CompImageHDU
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.coordinates import SkyCoord
 from astropy.stats import sigma_clipped_stats
@@ -512,7 +513,17 @@ class Analyzer(object):
                 hdus.append(hdu)
 
             hdul = fits.HDUList(hdus)
-            hdul.writeto(f'{name}', overwrite=True)
+            hdul.writeto(name, overwrite=True)
+        else:
+            print("Run Simulation")
+
+    def writecomp(self, name):
+
+        if self.sim_flag:
+            hdu = CompImageHDU(data=self.digital, header=self.header)
+            hdus = [fits.PrimaryHDU(), hdu]
+            hdul = fits.HDUList(hdus)
+            hdul.writeto(name, overwrite=True, checksum=True)
         else:
             print("Run Simulation")
 

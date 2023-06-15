@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
         name='insist-pista',
-        version='1.0.26',
+        version='1.0.27',
         description="Python Image Simulation and Testing Application",
         url='https://github.com/Jack3690/INSIST',
         author='Avinash CK',
@@ -12,7 +12,7 @@ setup(
         packages=find_packages(where='src'),
         install_requires=['pandas', 'matplotlib', 'astropy', 'photutils',
                           'numpy', 'seaborn', 'opencv-python', 'reproject',
-                          'torch'],
+                          ],
         include_package_data=True,
         package_data={'': ['pista/data/*']},
         classifiers=[

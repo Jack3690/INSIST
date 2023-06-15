@@ -17,7 +17,7 @@ os.environ['PYTHONPATH'] = ':'.join((package_path, os.environ.get('PYTHONPATH', 
 project = 'insist-pista'
 copyright = '2023, Avinash CK and INSIST Science Team'
 author = 'Avinash CK'
-release = '1.0.3'
+release = '1.0.26'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

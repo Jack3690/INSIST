@@ -1,10 +1,8 @@
 """This modules contains classes for simulating Imaging, Mosaicing, and
     Spectroscopic modes"""
 from pathlib import Path
-from astropy import units as u
 from astropy.wcs import WCS
 from astropy.io import fits
-from astropy.coordinates import SkyCoord
 
 import numpy as np
 
@@ -13,13 +11,9 @@ from reproject import reproject_interp
 from reproject.mosaicking import reproject_and_coadd
 from reproject.mosaicking import find_optimal_celestial_wcs
 
-import torch
-import torch.nn.functional as F
 
 from .utils import bandpass
-from .utils import redshift_corr
 from .analysis import Analyzer
-from .analysis import SpecAnalyzer
 
 data_path = Path(__file__).parent.joinpath('data')
 
@@ -30,8 +24,7 @@ class Imager(Analyzer):
     and detector characteristics
     """
     def __init__(self, df, coords=None, tel_params=None, n_x=1000,
-                 n_y=1000, exp_time=100, plot=False, user_profiles=None,
-                 **kwargs):
+                 n_y=1000, exp_time=100, plot=False, user_profiles=None):
         """
         Parameters
         ----------
@@ -98,7 +91,6 @@ class Imager(Analyzer):
             self.user_profiles.update(user_profiles)
         if tel_params is not None:
             self.tel_params.update(tel_params)
-        self.tel_params.update(kwargs)
 
         self.det_params = {
                           'shot_noise': 'Gaussian',
@@ -120,8 +112,6 @@ class Imager(Analyzer):
                           'C_ray_r': 2/50         # hits/second
                           }
 
-        self.det_params.update(kwargs)
-
         self.df = df.copy()
         self.n_x = n_x
         self.n_y = n_y
@@ -138,7 +128,6 @@ class Imager(Analyzer):
         self.tel_area = np.pi*(self.tel_params['aperture']/2)**2
 
         self.exp_time = exp_time  # seconds
-        self.sim_run = False
 
         self.psf_file = self.tel_params['psf_file']
 
@@ -151,7 +140,7 @@ class Imager(Analyzer):
             self.ra = coords[0]
             self.dec = coords[1]
 
-        ra_n = np.round(self.ra,  3)
+        ra_n = np.round(self.ra, 3)
         dec_n = np.round(self.dec, 3)
         self.name = f" RA : {ra_n} degrees, Dec : {dec_n} degrees"
 
@@ -172,10 +161,10 @@ class Imager(Analyzer):
             self.init_psf_patch()
 
             # Cropping df to sim_field
-            x_left = self.n_pix_sub - 1
-            x_right = self.n_x_sim - self.n_pix_sub - 1
-            y_left = self.n_pix_sub - 1
-            y_right = self.n_y_sim - self.n_pix_sub - 1
+            x_left = self.n_pix_psf//2
+            x_right = self.n_x_sim - self.n_pix_psf//2
+            y_left = self.n_pix_psf//2
+            y_right = self.n_y_sim - self.n_pix_psf//2
 
             self.sim_df = self.init_df(df=self.df,
                                        n_x=self.n_x_sim, n_y=self.n_y_sim,
@@ -195,8 +184,6 @@ class Imager(Analyzer):
         if 'ra' not in self.df or 'dec' not in self.df.keys():
             if 'x' in self.df.keys() and 'y' in self.df.keys():
                 print("Converting xy to ra-dec")
-                self.df.x = self.df.x + 2
-                self.df.y = self.df.y + 2
                 self.df = self.xy_to_radec(self.df, self.n_x, self.n_y,
                                            self.pixel_scale)
             else:
@@ -270,13 +257,13 @@ class Imager(Analyzer):
             image = fits.open(self.psf_file)[0].data
 
         image /= image.sum()  # Flux normalized to 1
-        self.image_g_sub = image
+        self.psf = image
 
-        self.n_pix_sub = self.image_g_sub.shape[0]
+        self.n_pix_psf = self.psf.shape[0]
 
         # Defining shape of simulation field
-        self.n_x_sim = self.n_x + 2*(self.n_pix_sub-1)
-        self.n_y_sim = self.n_y + 2*(self.n_pix_sub-1)
+        self.n_x_sim = self.n_x + 2*(self.n_pix_psf-1)
+        self.n_y_sim = self.n_y + 2*(self.n_pix_psf-1)
 
         if return_psf:
             return image*self.zero_flux
@@ -286,10 +273,10 @@ class Imager(Analyzer):
         wcs = self.create_wcs(n_x, n_y, self.ra, self.dec,
                               self.pixel_scale, self.theta)
 
-        c = SkyCoord(df['ra'], df['dec'], unit=u.deg)
-        pix = wcs.world_to_array_index(c)
-        df['x'] = pix[1]
-        df['y'] = pix[0]
+        coords = np.array([df['ra'], df['dec']])
+        pix = np.array(wcs.world_to_array_index_values(coords.T))
+        df['x'] = np.flip(pix[:, 0])
+        df['y'] = np.flip(pix[:, 1])
 
         # Cropping Dataframe based on FoV
         x_min_cut = (df['x'] > x_left)
@@ -319,12 +306,12 @@ class Imager(Analyzer):
             if return_img is true return base image array
 
         """
-        self.image = np.zeros((self.n_y_sim, self.n_x_sim))
-        self.wcs = self.create_wcs(self.n_x_sim, self.n_y_sim,
-                                   self.ra, self.dec, self.pixel_scale,
-                                   self.theta)
-        if return_img:
-            return self.image, self.wcs
+        image = np.zeros((self.n_y_sim, self.n_x_sim))
+        wcs = self.create_wcs(self.n_x_sim, self.n_y_sim,
+                              self.ra, self.dec, self.pixel_scale,
+                              self.theta)
+
+        return image, wcs
 
     def xy_to_radec(self, df, n_x, n_y, pixel_scale):
 
@@ -334,10 +321,10 @@ class Imager(Analyzer):
         w.wcs.crval = [10, 10]
         w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
-        pos = np.array([df.x, df.y])
+        pos = np.array([df['x'], df['y']])
         coords = np.array(w.pixel_to_world_values(pos.T))
-        df['ra'] = coords[:, 0]
-        df['dec'] = coords[:, 1]
+        df['ra'] = np.flip(coords[:, 0])
+        df['dec'] = np.flip(coords[:, 1])
 
         return df
 
@@ -362,7 +349,7 @@ class Imager(Analyzer):
 
         """
         w = WCS(naxis=2)
-        w.wcs.crpix = [(n_x)//2, (n_y)//2]
+        w.wcs.crpix = [n_x//2, n_y//2]
         w.wcs.cdelt = np.array([-pixel_scale/3600, self.pixel_scale/3600])
         w.wcs.crval = [ra, dec]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -560,7 +547,7 @@ class Imager(Analyzer):
         x0, y0 = df['x'].astype(int), df['y'].astype(int)
         ABmag = df['mag'].values
         flux = self.zero_flux * 10**(-ABmag/2.5)
-        patch = self.image_g_sub
+        patch = self.psf
 
         x1 = x0 - patch_width_mid
         x2 = x1 + patch_width
@@ -618,7 +605,7 @@ class Imager(Analyzer):
         """
           Parameters
           ----------
-        det_params: dict, optional
+          det_params: dict, optional
           Dictionary contianing detector parameters. The default is None.
                     {     'shot_noise' :  str,
                           'M_sky'      :  float,
@@ -642,33 +629,32 @@ class Imager(Analyzer):
 
           stack_type : str, optional
                       Stacking method. The default is 'median'.
-        photometry : str,
-                      Type of photometry to be employed
-                      Choose from
-                      'Aper' : Aperture photometry using Photutils
-                      'PSF'  : PSF photometry using DAOPHOT
-                      None   : Simulate without photometry
-        fwhm : float, pixels
-                During aperture photometry,
-                fwhm corresponds to FWHM circular aperture for
-                aperture photometry
-                During PSF photometry,
-                fwhm corresponds FWHM kernel to use for PSF photometry
-        sigma: float,
-                The numbers of standard deviations above which source has to be
-                detected
-        detect: bool,
-                If true, DARStarFinder is used to detect sources for aperture
-                photometry
+          photometry : str,
+                        Type of photometry to be employed
+                        Choose from
+                        'Aper' : Aperture photometry using Photutils
+                        'PSF'  : PSF photometry using DAOPHOT
+                        None   : Simulate without photometry
+          fwhm : float, pixels
+                  During aperture photometry,
+                  fwhm corresponds to FWHM circular aperture for
+                  aperture photometry
+                  During PSF photometry,
+                  fwhm corresponds FWHM kernel to use for PSF photometry
+          sigma: float,
+                  The numbers of standard deviations above which source has
+                  to be detected
+          detect: bool,
+                  If true, DARStarFinder is used to detect sources for aperture
+                  photometry
 
-                if false, input catalog is used for getting positions
-                of sources for aperture photometry
-        ZP    : float,
-                zero point of the telescope.
-                Default None, zero point is calculated theoretically or using
-                input catalog
-        Simulates field by taking dataframe as input by inserting sim patches
-        in image array using WCS
+                  if false, input catalog is used for getting positions
+                  of sources for aperture photometry
+          ZP    : float,
+                  zero point of the telescope.
+                  Default None, zero point is calculated theoretically or using
+                  input catalog
+
           Returns
           -------
           numpy.ndarray
@@ -689,11 +675,11 @@ class Imager(Analyzer):
 
         for i in range(n_stack):
 
-            self.init_image_array()
+            image, _ = self.init_image_array()
 
             # Source photons
-            self.source_photons = self.generate_photons(self.image,
-                                                        self.n_pix_sub,
+            self.source_photons = self.generate_photons(image,
+                                                        self.n_pix_psf,
                                                         self.sim_df)
             # Sky photons added to source
             self.light_array = (self.source_photons + self.sky_photons)
@@ -719,11 +705,11 @@ class Imager(Analyzer):
                 y = np.random.randint(0, self.n_y_main)
                 self.digital[x, y] = pow(2, self.det_params['bit_res'])
 
+        self.digital = self.digital.astype(np.int16)
         self.wcs = self.create_wcs(self.n_x, self.n_y,
                                    self.ra, self.dec,
                                    self.pixel_scale, self.theta)
-        self.digital = self.digital.astype(np.int16)
-        self.org_digital = self.digital.copy()
+
         self.sim_flag = True
         # Filtering out sources within Image
         x_left = 0
@@ -737,12 +723,16 @@ class Imager(Analyzer):
                                    y_left=y_left, y_right=y_right)
 
         self.header = self.wcs.to_header()
-        self.header['GAIN'] = self.det_params['G1']
-        self.header['TEMP'] = str(self.det_params['T']) + ' K'
-        self.header['BIAS'] = self.det_params['bias']
+        self.header['gain'] = self.det_params['G1']
+        self.header['Temp'] = str(self.det_params['T']) + 'K'
+        self.header['bias'] = self.det_params['bias']
         self.header['RN'] = self.det_params['RN']
-        self.header['DR'] = str(np.round(np.mean(self.DR), 5))
+        self.header['DR'] = np.mean(self.DR)
         self.header['NF'] = self.det_params['NF']
+        self.header['EXPTIME'] = self.exp_time
+        self.header['BUNIT'] = 'DN'
+
+        self.org_digital = self.digital.astype(float).copy()
 
         if ZP is None:
             QE = self.det_params['qe_mean']
@@ -754,15 +744,12 @@ class Imager(Analyzer):
             ZP = 2.5*np.log10(zero_p_flux)
             # Observed Zero Point Magnitude in DN
             self.ZP = ZP
+        self.header['ZP'] = self.ZP
 
         super().__call__(df=self.img_df, wcs=self.wcs,
                          data=self.digital.astype(float),
                          photometry=photometry, fwhm=fwhm, sigma=sigma,
                          detect_sources=detect_sources, ZP=ZP)
-
-        self.header['EXPTIME'] = self.exp_time
-        self.header['BUNIT'] = 'DN'
-        self.header['ZP'] = self.ZP
 
     def add_distortion(self, xmap, ymap):
         """Function for addition distortion using
@@ -771,7 +758,6 @@ class Imager(Analyzer):
         self.y_map = ymap
         # Interpolation to be added
         data = self.digital.astype(float).copy()
-
         distorted_img = cv2.remap(data, xmap.astype(np.float32),
                                   ymap.astype(np.float32), cv2.INTER_LANCZOS4)
         distorted_img = distorted_img.astype(int)
@@ -782,6 +768,10 @@ class Imager(Analyzer):
         before adding distortion"""
         # undistort to be added
         self.digital = self.org_digital
+
+    def __del__(self):
+        for i in self.__dict__:
+            del i
 
 
 class Mosaic(Imager):
@@ -908,370 +898,3 @@ class Mosaic(Imager):
         self.wcs = wcs_out
         self.digital = array
         self.footprint = fp
-
-
-class Spectrometer(Imager, Analyzer, SpecAnalyzer):
-    """Class for simulating Spectra"""
-    def __init__(self, df, coords=None, tel_params={}, n_x=1000,
-                 n_y=1000, exp_time=100, plot=False, user_profiles={},
-                 **kwargs):
-
-        if torch.cuda.is_available():
-            self.device = 'cuda'
-        else:
-            self.device = 'cpu'
-        self.tel_params = tel_params
-        bin_min = self.tel_params['lambda1'] - self.tel_params['dellambda']/2
-        bin_max = self.tel_params['lambda2'] + self.tel_params['dellambda']
-        self.bins = np.arange(bin_min,
-                              bin_max,
-                              self.tel_params['dellambda'])
-
-        self.spec_bins = 0.5*(self.bins[1:] + self.bins[:-1])
-        super().__init__(df, coords, tel_params, n_x, n_y, exp_time, plot,
-                         user_profiles, **kwargs)
-
-        self.generate_sim_field(plot)
-        self.sky = False
-        self.sim_df = redshift_corr(self.sim_df)
-
-    def check_df(self):
-        pass
-
-    def generate_sim_field(self, plot):
-        if self.df is not None:
-            self.calc_zp(plot=plot)
-            self.init_psf_patch()
-            spec_corr = len(self.spec_bins)//2
-            x_left = self.n_pix_sub - 1 + spec_corr
-            x_right = self.n_x_sim - self.n_pix_sub - 1 - spec_corr
-            y_left = self.n_pix_sub - 1
-            y_right = self.n_y_sim - self.n_pix_sub - 1
-
-            self.sim_df = self.init_df(df=self.df,
-                                       n_x=self.n_x_sim, n_y=self.n_y_sim,
-                                       x_left=x_left, x_right=x_right,
-                                       y_left=y_left, y_right=y_right)
-        else:
-            print("df cannot be None")
-
-    def init_psf_patch(self, return_psf=False, plot=False):
-
-        ext = self.psf_file.split('.')[-1]
-
-        if ext == 'npy':
-            image = np.load(self.psf_file)
-        elif ext == 'fits':
-            image = fits.open(self.psf_file)[0].data
-
-        image /= image.sum()  # Flux normalized to 1
-
-        self.image_g_sub = image
-
-        self.n_pix_sub = self.image_g_sub.shape[0]
-
-        spec_corr = 2*(len(self.spec_bins) - 1)
-        self.n_x_sim = self.n_x + 2*(self.n_pix_sub-1) + spec_corr
-        self.n_y_sim = self.n_y + 2*(self.n_pix_sub-1)
-
-        if return_psf:
-            return image*self.zero_flux
-
-    def calc_zp(self, plot=False):
-        if len(self.response_funcs) > 0:
-
-            wav = np.linspace(1000, 10000, 10000)
-            flux = 3631/(3.34e4*wav**2)   # AB flux
-
-            fig, ax, data, _ = bandpass(wav, flux, self.response_funcs,
-                                        plot=plot)
-
-            lambda_, _, Reff = data
-            self.Reff = self.bin_xy_norm(lambda_, Reff)
-
-            self.flux_coeffs = self.Reff.copy()
-            self.flux_coeffs *= self.exp_time*self.coeffs*self.tel_area
-
-            filt_dat = np.loadtxt(f'{data_path}/data/Sky_mag.dat')
-            wav = filt_dat[:, 0]
-            flux = filt_dat[:, 1]
-
-            fig, ax, data, _ = bandpass(wav, flux, self.response_funcs,
-                                        plot=False)
-            lambda_, conv_flux, _ = data
-
-            self.det_params['M_sky'] = conv_flux
-            M_corr = 2.5*np.log10(self.pixel_scale**2)
-            self.M_sky_p = self.det_params['M_sky'] - M_corr
-
-            sky_bag_flux = 3631*pow(10, -0.4*self.M_sky_p)
-
-            wav_new = np.arange(lambda_[0], lambda_[-1],
-                                self.tel_params['dellambda']/10)
-
-            flux_new = np.interp(wav_new, lambda_, sky_bag_flux)
-
-            self.sky_bag_flux = self.bin_xy(wav_new, flux_new)*self.flux_coeffs
-            dl = self.tel_params['dellambda']
-            lam = self.spec_bins
-            self.sky_bag_flux = 1.51e3*self.sky_bag_flux*(dl/lam)
-        else:
-            raise Exception("Response Functions not Provided")
-
-    def init_image_array(self, return_img=False):
-        """
-        Creates a base image array for adding photons
-
-        Parameters
-        ----------
-        return_img : bool, optional
-            DESCRIPTION. The default is False.
-
-        Returns
-        -------
-        numpy.ndarray
-            if return_img is true return base image array
-
-        """
-        self.image = np.zeros((self.n_y_sim, self.n_x_sim))
-        self.mask = np.zeros((self.n_y_sim, self.n_x_sim))
-        self.wcs = self.create_wcs(self.n_x_sim, self.n_y_sim,
-                                   self.ra, self.dec, self.pixel_scale,
-                                   self.theta)
-        if return_img:
-            return self.image, self.wcs
-
-    def bin_xy(self, x, y):
-        y_binned = []
-        for i in range(len(self.bins) - 1):
-            indices = np.where((x > self.bins[i]) & (x <= self.bins[i+1]))[0]
-            if len(indices > 0):
-                y_binned.append(y[indices].sum())
-            else:
-                y_binned.append(0)
-        return np.array(y_binned)
-
-    def bin_xy_norm(self, x, y):
-        y_binned = []
-        for i in range(len(self.bins) - 1):
-            indices = np.where((x > self.bins[i]) & (x <= self.bins[i+1]))[0]
-            if len(indices > 0):
-                y_binned.append(np.median(y[indices]))
-            else:
-                y_binned.append(0)
-        return np.array(y_binned)
-
-    def generate_photons(self, image, patch_width, df):
-        """
-        This function creates sims based on ABmag  on a
-        small patch (2D array) of size n_pix_s*n_pix_s.
-
-        The patch with the sim is then added to the image array of size
-        n_pix_m*n_pix_m using wcs object.
-
-        Parameters
-        ----------
-        image       : numpy.ndarray
-                    base image array for inserting star sims
-        patch_width : int
-                    number of pixels (length) in sim patch image
-        df          : pandas.dataframe
-                    Dataframe containing source list
-
-
-        Returns
-        -------
-        image : numpy.ndarray
-            Array with sims added based on df
-
-        """
-        patch_width_mid = patch_width//2
-        disp_width = len(self.spec_bins)
-        disp_width_mid = disp_width//2
-
-        patch = self.image_g_sub
-        device = self.device
-
-        # Convert to tensor once, before the loop
-        image = torch.tensor(image, dtype=torch.float32, device=device)
-        flux_coeffs = torch.tensor(self.flux_coeffs, dtype=torch.float32,
-                                   device=device)
-        del_lambda = torch.tensor(self.tel_params['dellambda'],
-                                  dtype=torch.float32, device=device)
-        lambda_ = torch.tensor(self.spec_bins, dtype=torch.float32,
-                               device=device)
-        const = torch.tensor(1.51e3, dtype=torch.float32, device=device)
-
-        for row in df:
-
-            x = row['wav']
-            y = row['flux']
-
-            flux = self.bin_xy(x, y)
-            wav = self.bin_xy_norm(x, x)
-
-            flux = flux*wav**2*3.34e4
-            flux = torch.tensor(flux, dtype=torch.float32, device=device)
-            flux *= flux_coeffs
-            flux = const*flux*(del_lambda/lambda_)
-
-            # Generating star using sim
-
-            x0 = int(row['x'])
-            y0 = int(row['y'])
-
-            x1 = x0 - patch_width_mid - disp_width_mid + 1
-            x2 = x1 + patch_width + disp_width - 1
-            y1 = y0 - patch_width_mid
-            y2 = y1 + patch_width
-
-            data = torch.tensor(flux, dtype=torch.float32, device=device)
-            data = data.view(1, 1, 1, -1)
-            kernel = torch.tensor(patch, dtype=torch.float32, device=device)
-            kernel = kernel.view(1, 1, patch_width, patch_width)
-            spectrum = F.conv2d(data, kernel, padding=patch_width-1)
-
-            image[y1:y2, x1:x2] += spectrum.squeeze()
-
-            self.mask[y0 - 3:y0 + 4, x1:x2] += 0.5
-
-            # Empty GPU cache after each iteration
-            torch.cuda.empty_cache()
-
-        # Convert to numpy array once, outside of the loop
-        image = image.detach().cpu().numpy()
-        image = image[patch_width-1:-patch_width+1,  # Cropping Image
-                      patch_width+disp_width-2:-patch_width-disp_width + 2]
-
-        return image
-
-    def __call__(self, det_params=None, n_stack=1, stack_type='median',
-                 photometry=None, fwhm=None, detect_sources=False, **kwargs):
-        """
-            Parameters
-            ----------
-        det_params: dict, optional
-            Dictionary contianing detector parameters. The default is None.
-                    {     'shot_noise' :  str,
-                            'M_sky'      :  float,
-                            'qe_sigma'   :  float,       Pixel to pixel
-                                                         fluctuation
-                            'bias'       :  float,       electrons
-                            'G1'         :  float,
-                            'bit_res'    :  int,
-                            'RN'         :  float,       elec/pix
-                            'PRNU_frac'  :  float,       PRNU sigma
-                            'T'          :  float,       K
-                            'DFM'        :  float,       pA
-                            'pixel_area' :  float,
-                            'DN'         :  float,
-                            'NF'         :  float,       electrons
-                            'FWC'        :  float,       electrons
-                            'C_ray_r'    :  float        hits/second
-                        }
-
-            n_stack    : int, optional
-                        Number of observations to be stacked. The default is 1.
-
-            stack_type : str, optional
-                        Stacking method. The default is 'median'.
-
-
-        Simulates field by taking dataframe as input by inserting sim patches
-        in image array using WCS
-            Returns
-            -------
-            numpy.ndarray
-            Final image array after adding all layers of simulation
-
-        """
-        if det_params is not None:
-
-            self.det_params.update(det_params)
-            fwc_max = pow(2, self.det_params['bit_res'])
-            self.gain = self.det_params['G1']*fwc_max/self.det_params['FWC']
-
-        digital_stack = []
-
-        for i in range(n_stack):
-
-            self.init_image_array()
-            self.compute_coeff_arrays()
-
-            # Source photons
-
-            self.source_photons = self.generate_photons(self.image,
-                                                        self.n_pix_sub,
-                                                        self.sim_df)
-            # Sky photons added to source
-            self.light_array = (self.source_photons + self.sky_photons)
-
-            # Source shot_noise
-            if self.shot_noise:
-                type_ = self.det_params['shot_noise']
-                self.light_array = self.compute_shot_noise(self.light_array,
-                                                           type_=type_)
-
-            # QE pixel to pixel variation | Source photoelectrons
-            self.light_array = self.light_array*self.det_params['qe_mean']
-
-            # Photon Response (Quantum Efficiency) Non Uniformity
-            if self.PRNU:
-                self.light_array *= (1+self.PRNU_array)
-
-            # Dark Current. Includes DCNU, DNFP and shot noise
-            self.photoelec_array = self.light_array + self.DC_array
-
-            # Addition of Quantization error, Bias and Noise floor
-            self.charge = self.photoelec_array + self.QN_array \
-                                               + self.det_params['NF'] \
-                                               + self.bias_array
-
-            # Photoelec to ADUs
-            self.digital = (self.charge*self.gain).astype(int)
-
-            # Full well condition
-            FWC_cond = self.digital >= pow(2, self.det_params['bit_res'])
-            FWC_max = pow(2, self.det_params['bit_res'])
-            self.digital = np.where(FWC_cond, FWC_max, self.digital)
-
-            digital_stack.append(self.digital)
-
-        digital_stack = np.array(digital_stack)
-        if n_stack > 1:
-            if stack_type == 'median':
-                self.digital = np.median(digital_stack, axis=0)
-            elif stack_type == 'mean':
-                self.digital = np.median(digital_stack, axis=0)
-
-        if self.cosmic_rays:
-            for i in range(self.n_cosmic_ray_hits):
-                x = np.random.randint(0, self.n_x_main)
-                y = np.random.randint(0, self.n_y_main)
-                self.digital[x, y] = pow(2, self.det_params['bit_res'])
-
-        self.wcs = self.create_wcs(self.n_x, self.n_y,
-                                   self.ra, self.dec,
-                                   self.pixel_scale, self.theta)
-
-        self.sim_flag = True
-        # Filtering out sources within Image
-        x_left = 0
-        x_right = self.n_x
-        y_left = 0
-        y_right = self.n_y
-
-        self.img_df = self.init_df(df=self.sim_df.copy(),
-                                   n_x=self.n_x, n_y=self.n_y,
-                                   x_left=x_left, x_right=x_right,
-                                   y_left=y_left, y_right=y_right)
-
-        self.header = self.wcs.to_header()
-        self.header['gain'] = self.det_params['G1']
-        self.header['Temp'] = str(self.det_params['T']) + 'K'
-        self.header['bias'] = self.det_params['bias']
-        self.header['RN'] = self.det_params['RN']
-        self.header['DR'] = np.mean(self.DR)
-        self.header['NF'] = self.det_params['NF']
-
-        self.extract(data=self.digital, wcs=self.wcs, df=self.img_df)

@@ -35,8 +35,9 @@ def test_Imager_init(gen_imager_input):
 
     assert hasattr(sim, 'zero_flux')
     assert hasattr(sim, 'sky_bag_flux')
-    assert hasattr(sim, 'image_g_sub')
+    assert hasattr(sim, 'psf')
     assert hasattr(sim, 'sim_df')
+    assert 'x' in sim.sim_df.keys() and 'y' in sim.sim_df.keys()
 
 
 def test_Imager_call(gen_imager_input):

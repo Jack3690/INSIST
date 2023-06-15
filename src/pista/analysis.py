@@ -702,7 +702,7 @@ class Analyzer(object):
         """
         if hasattr(self, 'digital'):
             c1 = user_source is not None
-            c2 = isinstance(user_source) == np.ndarray
+            c2 = isinstance(user_source, np.ndarray)
             if c1 and c2:
                 data = user_source
             elif source == 'Digital':

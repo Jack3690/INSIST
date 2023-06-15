@@ -2,6 +2,7 @@
 from pista import Analyzer
 from pista import Imager
 from pista import data_dir
+import os
 import pytest
 import pandas as pd
 
@@ -48,3 +49,32 @@ def test_Analyzer(init_Imager):
     assert 'mag_in' in an.phot_table.keys()
     assert 'mag_out' in an.phot_table.keys()
     assert 'SNR' in an.phot_table.keys()
+
+
+def test_plotting(init_Imager):
+    sim = init_Imager
+    an = Analyzer()
+
+    df = sim.df
+    wcs = sim.wcs
+    data = sim.digital
+    ZP = sim.ZP
+    an(df=df, wcs=wcs, data=data, photometry='Aper', ZP=ZP)
+    an.n_x = sim.n_x
+    an.n_y = sim.n_y
+
+    an.n_x_sim = sim.n_x_sim
+    an.n_y_sim = sim.n_y_sim
+
+    an.sim_df = sim.sim_df
+    an.pixel_scale = sim.pixel_scale
+    an.ra = sim.ra
+    an.dec = sim.dec
+
+    an.name = ''
+
+    an.show_field()
+    an.show_image()
+    an.writeto('test.fits')
+    if os.path.exists('test.fits'):
+        os.remove('test.fits')

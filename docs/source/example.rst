@@ -33,11 +33,10 @@ Telescope parameters
   tel_params = {
                   'aperture'       : 100,
                   'pixel_scale'    : 0.1,
-                  'psf_file'       : f'{data_path}/data/PSF/INSIST/off_axis_hcipy.npy',
+                  'psf_file'       : f'{data_path}/data/PSF/INSIST/off_axis_poppy.npy',
                   'response_funcs' :  [ f'{data_path}/data/INSIST/UV/Filter.dat,1,100',    
                                         f'{data_path}/data/INSIST/UV/Coating.dat,5,100',   # 5 mirrors
                                         f'{data_path}/data/INSIST/UV/Dichroic.dat,2,100',  # 2 dichroics
-                                        f'{data_path}/data/INSIST/UV/QE.dat,1,100'
                                       ],                                
                 } 
 
@@ -57,6 +56,7 @@ Detector parameters
   det_params = {  'shot_noise' :  'Gaussian',
                   'G1'         :  1,
                   'PRNU_frac'  :  0.25/100,
+                  'qe_response': [f'{data_path}/data/INSIST/UV/QE.dat,1,100'],
                   'RN'         :  3,
                   'T'          :  218,        
                   'DN'         :  0.01/100     

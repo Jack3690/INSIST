@@ -46,7 +46,7 @@ Initialize Imager object
 .. jupyter-execute::
   
   sim = pt.Imager(df = df,tel_params = tel_params, n_x = 500, n_y = 500, exp_time = 2400)
-  sim.show_field();
+  sim.show_field(figsize=(12, 10);
   
 Detector parameters
 ===================

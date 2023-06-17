@@ -10,12 +10,12 @@ Initialization
 
 .. jupyter-execute::
 
-  import pista as pis
+  import pista as pt
   from pathlib import Path
   from astropy.table import Table
   import matplotlib.pyplot as plt
   
-  data_path = Path(pis.__file__).parent.joinpath()
+  data_path = Path(pt.__file__).parent.joinpath()
   %matplotlib inline
 
 Source Catalog
@@ -46,7 +46,7 @@ Initialize Imager object
 
 .. jupyter-execute::
   
-  sim = pis.Imager(df = df,tel_params = tel_params, n_x = 500, n_y = 500, exp_time = 2400)
+  sim = pt.Imager(df = df,tel_params = tel_params, n_x = 500, n_y = 500, exp_time = 2400)
   sim.show_field();
   
 Detector parameters

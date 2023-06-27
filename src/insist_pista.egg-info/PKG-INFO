@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: insist-pista
-Version: 1.0.27
+Version: 2.0.0
 Summary: Python Image Simulation and Testing Application
 Home-page: https://github.com/Jack3690/INSIST
 Author: Avinash CK
@@ -11,6 +11,7 @@ Classifier: Intended Audience :: Science/Research
 Classifier: License :: OSI Approved :: BSD License
 Classifier: Operating System :: OS Independent
 Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
 Description-Content-Type: text/markdown
 

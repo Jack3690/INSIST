@@ -756,3 +756,78 @@ class Analyzer(object):
         hdus = [fits.PrimaryHDU(), hdu]
         hdul = fits.HDUList(hdus)
         hdul.writeto(name, overwrite=True, checksum=True)
+
+
+class SpecAnalyzer(object):
+
+    def __init__(self):
+        """
+        A class to visualize and analyze the simulated image
+
+        Parameters
+        ----------
+        Imager.init()
+
+        Returns
+        -------
+        None.
+
+        """
+    def extract(self, data, wcs, df, width=50, sep=5):
+
+        """
+        Extracts Spectra for Slitless Spectroscopy
+
+        """
+        coords = np.array([df['ra'], df['dec']])
+        # convert the sky coordinates to pixel coordinates
+        pix = wcs.world_to_pixel_values(coords.T)
+        positions = np.array(pix)
+
+        bin_mid = len(self.spec_bins)//2
+        w = width//2
+
+        fluxes = []
+        for i, j in positions:
+
+            i = np.round(i, 1).astype(int)
+            j = np.round(j, 1).astype(int)
+
+            start = i-bin_mid if i-bin_mid >= 0 else 0
+            end = i+bin_mid if i+bin_mid <= self.n_x else self.n_x
+
+            top = j - w if j - w >= 0 else 0
+            bottom = j + w if j + w <= self.n_y else self.n_y
+
+            flux = data[top:bottom, start:end+1]
+
+            if top >= w + sep and bottom <= self.n_y - w - sep:
+                top_ = top - w - sep
+                bottom_ = top - sep
+                sky = data[top_:bottom_, start:end+1]
+
+                top_ = bottom + sep
+                bottom_ = bottom + w + sep
+                sky += data[top_:bottom_, start:end+1]
+
+            elif top < w + sep:
+                top_ = bottom + sep
+                bottom_ = bottom + width + sep
+                sky = data[top_:bottom_, start:end+1]
+
+            elif bottom > self.n_y - w - sep:
+                top_ = top - sep - width
+                bottom_ = top - sep
+                sky = data[top_:bottom_, start:end+1]
+
+            fluxes.append(flux.sum(axis=0) - sky.sum(axis=0))
+
+        self.spec_width = width
+        self.phot_table = df[['ra', 'dec', 'z1', 'z2']]
+        self.phot_table['flux'] = fluxes
+
+    def cal_flux(self, flux, A=0, B=0.15):
+        """
+            Calibrate Flux by converting flux in counts to ergs/s/cm2/A
+        """
+        self.phot_table['flux'] = self.phot_table['flux']/self.UC

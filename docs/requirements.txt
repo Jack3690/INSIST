@@ -2,4 +2,5 @@ urllib3<2
 sphinx
 insist-pista
 ipython
+ipykernel
 jupyter-sphinx

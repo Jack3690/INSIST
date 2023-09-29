@@ -7,10 +7,13 @@ from matplotlib.ticker import AutoMinorLocator
 
 from photutils.detection import DAOStarFinder
 from photutils.psf import DAOPhotPSFPhotometry, FittableImageModel
+from photutils.background import MMMBackground, MADStdBackgroundRMS
+from photutils.background import Background2D, LocalBackground
 
 from astropy.io import fits
 from astropy.io.fits import CompImageHDU
 from astropy.modeling.fitting import LevMarLSQFitter
+from astropy.stats import SigmaClip, sigma_clipped_stats
 
 from astropy.stats import sigma_clipped_stats
 from .utils import Xmatch
@@ -51,17 +54,164 @@ class Analyzer(object):
             self.psf_photometry(data, wcs, df, fwhm, sigma, ZP)
 
     def aper_photometry(self, data, wcs, df, fwhm, sigma, detect, ZP):
+      """
+      Function to perform Aperture photometry
+
+      Parameters
+      ----------
+
+      data: np.ndarray,
+            image to perform photometry on
+
+      wcs: astropy.wcs.WCS
+            WCS object of the image
+
+      df: pandas.DataFrame,
+          Source catalog of source in the image from simulation for
+          reference
+
+      fwhm : float, pixels
+                  During aperture photometry,
+                  fwhm corresponds to FWHM circular aperture for
+                  aperture photometry
+                  During PSF photometry,
+                  fwhm corresponds FWHM kernel to use for PSF photometry
+      sigma: float,
+              The numbers of standard deviations above which source has to be
+              detected
+      detect: bool,
+              If true, DARStarFinder is used to detect sources for aperture
+              photometry
+
+              if false, input catalog is used for getting positions
+              of sources for aperture photometry
+      ZP    : float,
+              zero point of the telescope.
+
+      Returns
+      -------
+
+      phot_table: astropy.table.Table
+                  table containing photometry of the souces
+
+                  Columns
+                    'x-centeroid'
+                    'y-centeroid'
+                    'sky'
+                    'flux'
+                    'mag_in'
+                    'mag_out'
+                    'mag_err'
+                    'SNR'
+
+      """
+
+      # if detect flag is set to True, detect sources in the image
+      if detect:
+
+          bkgrms = MADStdBackgroundRMS()
+          mmm_bkg = MMMBackground()
+
+          sigma_clip = SigmaClip(sigma=3.0)
+          coverage_mask = (data == 0)
+
+          bkg = Background2D(data, (100, 100), filter_size=(3, 3),
+                            sigma_clip=sigma_clip, bkg_estimator=mmm_bkg,
+                              coverage_mask=coverage_mask, fill_value=0.0)
+
+          data_bkgsub = data.copy()
+          data_bkgsub = data_bkgsub - bkg.background
+
+          _, _, std = sigma_clipped_stats(data_bkgsub)
+
+          daofind = DAOStarFinder(threshold=sigma*std, fwhm=fwhm)
+          sources = daofind(data_bkgsub)
+          # Get the source positions
+          positions = np.transpose((sources['xcentroid'],
+                                    sources['ycentroid']))
+
+      else:
+
+          # create SkyCoord object from ra and dec values in the dataframe
+          coords = np.array([df['ra'],df['dec']])
+          # convert the sky coordinates to pixel coordinates
+          pix = wcs.world_to_pixel_values(coords.T)
+          positions = np.array(pix)
+
+
+      # create circular aperture object
+      self.aps = aper.CircularAperture(positions, r=2*fwhm)
+      # count number of pixels within the aperture
+      ap_pix = self.aps.area
+      # create circular annulus object
+      self.bags = aper.CircularAnnulus(positions, r_in=3*fwhm,
+                                        r_out=5*fwhm)
+      # count number of pixels within the annulus
+      bag_pix = self.bags.area
+
+      # perform aperture photometry on the data
+      phot_table = aper.aperture_photometry(data, [self.aps, self.bags])
+
+      # calculate sky flux
+      phot_table['sky_flux'] = phot_table['aperture_sum_1']*(ap_pix/bag_pix)
+      # calculate source flux
+      phot_table['flux'] = phot_table['aperture_sum_0'].value - \
+          phot_table['sky_flux'].value
+      # calculate error on the source flux
+      phot_table['flux_err'] = np.sqrt(phot_table['flux'].value + \
+                                       phot_table['sky_flux'].value  + \
+                                       self.det_params['RN']*self.gain*ap_pix +\
+                                       self.DC_array.mean()*self.gain*ap_pix)
+
+      # calculate signal to noise ratio
+      phot_table['SNR'] = phot_table['flux']/phot_table['flux_err']
+
+      if not detect:
+
+          phot_table['ra'] = df['ra'].values
+          phot_table['dec'] = df['dec'].values
+          phot_table['mag_in'] = df['mag'].values
+
+      else:
+          coords = np.array(wcs.pixel_to_world_values(positions))
+
+          phot_table['ra'] = coords[:, 0]
+          phot_table['dec'] = coords[:, 1]
+
+          matched = Xmatch(phot_table, df, 3*fwhm)
+          mag_in = []
+          sep = []
+          for i, j, k in matched:
+              if j is not None:
+                  mag_in.append(df['mag'].values[j])
+                  sep.append(k)
+              else:
+                  mag_in.append(np.nan)
+                  sep.append(np.nan)
+
+          phot_table['mag_in'] = mag_in
+          phot_table['sep'] = sep
+
+      phot_table['mag_out'] = -2.5*np.log10(phot_table['flux']) + ZP
+      phot_table['mag_err'] = 1.082/phot_table['SNR']
+
+      coords = np.array(wcs.pixel_to_world_values(positions))
+      phot_table['ra'] = coords[:, 0]
+      phot_table['dec'] = coords[:, 1]
+      self.phot_table = phot_table
+
+    def psf_photometry(self, data, wcs, df, fwhm, sigma, ZP):
         """
-        Function to perform Aperture photometry
+        Function to perform PSF photometry
 
         Parameters
         ----------
 
         data: np.ndarray,
-            image to perform photometry on
+              image to perform photometry on
 
         wcs: astropy.wcs.WCS
-            WCS object of the image
+              WCS object of the image
 
         df: pandas.DataFrame,
             Source catalog of source in the image from simulation for
@@ -92,154 +242,21 @@ class Analyzer(object):
                     table containing photometry of the souces
 
                     Columns
-                    'x-centeroid'
-                    'y-centeroid'
-                    'sky'
-                    'flux'
-                    'mag_in'
-                    'mag_out'
-                    'mag_err'
-                    'SNR'
-
+                      'x-centeroid'
+                      'y-centeroid'
+                      'sky'
+                      'flux'
+                      'mag_in'
+                      'mag_out'
+                      'mag_err'
+                      'SNR'
         """
+        mean, median, std = sigma_clipped_stats(data, sigma=3)
 
-        # if detect flag is set to True, detect sources in the image
-        if detect:
+        psf_model = FittableImageModel(self.psf)
+        self.psf_model = psf_model
 
-            # Calculate the mean, median and standard deviation of the data
-            mean, median, std = sigma_clipped_stats(data, sigma=sigma)
-            # Create DAOStarFinder object to detect sources
-            daofind = DAOStarFinder(fwhm=fwhm, threshold=sigma*std)
-            # Detect sources in the image
-            sources = daofind(data-median)
-            # Get the source positions
-            positions = np.transpose((sources['xcentroid'],
-                                      sources['ycentroid']))
-
-        else:
-
-            # create SkyCoord object from ra and dec values in the dataframe
-            coords = np.array([df['ra'], df['dec']])
-            # convert the sky coordinates to pixel coordinates
-            pix = wcs.world_to_pixel_values(coords.T)
-            positions = np.array(pix)
-
-        # create circular aperture object
-        self.aps = aper.CircularAperture(positions, r=2*fwhm)
-        # count number of pixels within the aperture
-        ap_pix = np.count_nonzero(self.aps.to_mask()[0])
-        # create circular annulus object
-        self.bags = aper.CircularAnnulus(positions, r_in=3*fwhm,
-                                         r_out=5*fwhm)
-        # count number of pixels within the annulus
-        bag_pix = np.count_nonzero(self.bags.to_mask()[0])
-
-        # perform aperture photometry on the data
-        phot_table = aper.aperture_photometry(data, [self.aps, self.bags])
-
-        # calculate sky flux
-        phot_table['sky_flux'] = phot_table['aperture_sum_1']*(ap_pix/bag_pix)
-        # calculate source flux
-        phot_table['flux'] = phot_table['aperture_sum_0'].value - \
-            phot_table['sky_flux'].value
-        # calculate error on the source flux
-        phot_table['flux_err'] = np.sqrt(phot_table['flux'].value +
-                                         phot_table['sky_flux'].value)
-
-        # calculate signal to noise ratio
-        phot_table['SNR'] = phot_table['flux']/phot_table['flux_err']
-
-        if not detect:
-
-            phot_table['ra'] = df['ra'].values
-            phot_table['dec'] = df['dec'].values
-            phot_table['mag_in'] = df['mag'].values
-
-        else:
-            coords = np.array(wcs.pixel_to_world_values(positions))
-
-            phot_table['ra'] = coords[:, 0]
-            phot_table['dec'] = coords[:, 1]
-
-            matched = Xmatch(phot_table, df, 3*fwhm)
-            mag_in = []
-            sep = []
-            for i, j, k in matched:
-                if j is not None:
-                    mag_in.append(df['mag'].values[j])
-                    sep.append(k)
-                else:
-                    mag_in.append(np.nan)
-                    sep.append(np.nan)
-
-            phot_table['mag_in'] = mag_in
-            phot_table['sep'] = sep
-
-        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux']) + ZP
-        phot_table['mag_err'] = 1.082/phot_table['SNR']
-
-        coords = np.array(wcs.pixel_to_world_values(positions))
-        phot_table['ra'] = coords[:, 0]
-        phot_table['dec'] = coords[:, 1]
-        self.phot_table = phot_table
-
-        def psf_photometry(self, data, wcs, df, fwhm, sigma, ZP):
-            """
-            Function to perform PSF photometry
-
-            Parameters
-            ----------
-
-            data: np.ndarray,
-                image to perform photometry on
-
-            wcs: astropy.wcs.WCS
-                WCS object of the image
-
-            df: pandas.DataFrame,
-                Source catalog of source in the image from simulation for
-                reference
-
-            fwhm : float, pixels
-                        During aperture photometry,
-                        fwhm corresponds to FWHM circular aperture for
-                        aperture photometry
-                        During PSF photometry,
-                        fwhm corresponds FWHM kernel to use for PSF photometry
-            sigma: float,
-                    The numbers of standard deviations above which source
-                      has to be detected
-            detect: bool,
-                    If true, DARStarFinder is used to detect sources
-                    for aperture photometry
-
-                    if false, input catalog is used for getting positions
-                    of sources for aperture photometry
-            ZP    : float,
-                    zero point of the telescope.
-
-            Returns
-            -------
-
-            phot_table: astropy.table.Table
-                        table containing photometry of the souces
-
-                        Columns
-                        'x-centeroid'
-                        'y-centeroid'
-                        'sky'
-                        'flux'
-                        'mag_in'
-                        'mag_out'
-                        'mag_err'
-                        'SNR'
-            """
-            mean, median, std = sigma_clipped_stats(data, sigma=3)
-
-            psf_model = FittableImageModel(self.psf)
-            self.psf_model = psf_model
-
-            photometry = DAOPhotPSFPhotometry(crit_separation=2,
+        photometry = DAOPhotPSFPhotometry(crit_separation=2,
                                               threshold=mean + sigma*std,
                                               fwhm=fwhm,
                                               aperture_radius=3,
@@ -248,35 +265,41 @@ class Analyzer(object):
                                               fitshape=(11, 11),
                                               niters=3)
 
-            phot_table = photometry(image=data)
-            positions = np.array([phot_table['x_fit'], phot_table['y_fit']]).T
-            coords = np.array(wcs.pixel_to_world_values(positions))
+        phot_table = photometry(image=data)
+        positions = np.array([phot_table['x_fit'], phot_table['y_fit']]).T
+        coords = np.array(wcs.pixel_to_world_values(positions))
 
-            phot_table['ra'] = coords[:, 0]
-            phot_table['dec'] = coords[:, 1]
-            phot_table['SNR'] = phot_table['flux_fit']/phot_table['flux_unc']
+        phot_table['ra'] = coords[:, 0]
+        phot_table['dec'] = coords[:, 1]
+        ap_pix = 11*11
+        flux_err = np.sqrt(phot_table['flux_unc']**2 + \
+                           self.det_params['RN']*self.gain*ap_pix + \
+                           self.DC_array.mean()*self.gain*ap_pix)
+        phot_table['SNR'] = phot_table['flux_fit']/flux_err
 
-            phot_table['mag_out'] = -2.5*np.log10(phot_table['flux_fit'])
-            phot_table['mag_out'] += ZP
-            phot_table['mag_err'] = 1.082/phot_table['SNR']
 
-            matched = Xmatch(phot_table, df, 3*fwhm)
-            mag_in = []
-            sep = []
-            for i, j, k in matched:
-                if j is not None:
-                    mag_in.append(df['mag'].values[j])
-                    sep.append(k)
-                else:
-                    mag_in.append(np.nan)
-                    sep.append(np.nan)
+        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux_fit'])
+        phot_table['mag_out'] += ZP
+        phot_table['mag_err'] = 1.082/phot_table['SNR']
 
-            phot_table['mag_in'] = mag_in
-            phot_table['sep'] = sep
+        matched = Xmatch(phot_table, df, 3*fwhm)
+        mag_in = []
+        sep = []
+        for i, j, k in matched:
+            if j is not None:
+                mag_in.append(df['mag'].values[j])
+                sep.append(k)
+            else:
+                mag_in.append(np.nan)
+                sep.append(np.nan)
 
-            self.phot_table = phot_table
+        phot_table['mag_in'] = mag_in
+        phot_table['sep'] = sep
 
-    def show_field(self, figsize=(10, 10), marker='.', cmap='jet'):
+
+        self.phot_table = phot_table
+
+    def show_field(self, figsize=(12, 10), marker='.', cmap='jet'):
         """
         Function for creating a scatter plot of sources within the FoV
 
@@ -320,97 +343,92 @@ class Analyzer(object):
         fig, ax = plt.subplots(1, 1, figsize=figsize)
 
         if hasattr(self, 'spec_bins'):
-            x = df['x']
-            y = df['y']
-            c = None
-            cmap = None
+          x = df['x']
+          y = df['y']
+          c = None
+          cmap = None
+          color = None
+
+          if 'mag' in df.keys():
+            c = df['mag']
+            cmap = 'jet'
             color = None
 
-            if 'mag' in df.keys():
-                c = df['mag']
-                cmap = 'jet'
-                color = None
+          img = ax.scatter(x, y, c=c, color = color, cmap=cmap, marker=marker)
+          cb = plt.colorbar(img, fraction = 1/scale, pad =0.01)
+          cb.set_label('mag (ABmag)')
+          ax.set_title(f"""Requested Center : {self.name} | {len(df)} sources
+          Fov(RA) : {fov_x} (deg) | Fov(Dec) : {fov_y} (deg)""")
+          ax.set_xlabel('x (pix)')
+          ax.set_ylabel('y (pix)')
 
-            img = ax.scatter(x, y, c=c, color=color, cmap=cmap,
-                             marker=marker)
-            cb = plt.colorbar(img, fraction=1/scale, pad=0.01)
-            cb.set_label('mag (ABmag)')
+          if hasattr(self, 'L'):
+            B = self.B
+            L = self.L
+            l = len(self.spec_bins)
+            PA = self.PA
 
-            ax.set_xlabel('x (pix)')
-            ax.set_ylabel('y (pix)')
+            delta = np.arctan(B/L)
+            d = np.sqrt(L**2 + B**2)/2
+            om = PA - delta
 
-            if hasattr(self, 'L'):
-                B = self.B
-                L = self.L
-                lw = len(self.spec_bins)
-                PA = self.PA
+            x_corr = self.n_x_sim//2 - d*np.cos(om) - l/2
+            y_corr = self.n_y_sim//2 - d*np.sin(om) - B*np.cos(PA)
 
-                delta = np.arctan(B/L)
-                d = np.sqrt(L**2 + B**2)/2
-                om = PA - delta
+            start = B*np.sin(PA) + l/2 + x_corr
+            end = start + L*np.cos(PA)
+            x = np.linspace(start,end,100)
+            y = np.tan(PA)*(x - B*np.sin(PA) - l/2 - x_corr) + y_corr
 
-                x_corr = self.n_x_sim//2 - d*np.cos(om) - lw/2
-                y_corr = self.n_y_sim//2 - d*np.sin(om) - B*np.cos(PA)
+            ax.plot(x,y,color = 'red')
 
-                start = B*np.sin(PA) + lw/2 + x_corr
-                end = start + L*np.cos(PA)
-                x = np.linspace(start, end, 100)
-                y = np.tan(PA)*(x - B*np.sin(PA) - lw/2 - x_corr) + y_corr
+            start = l/2 + x_corr
+            end = start + L*np.cos(PA)
+            x = np.linspace(start, end, 100)
+            y = np.tan(PA)*(x - l/2  - x_corr) + B*np.cos(PA) + y_corr
 
-                ax.plot(x, y, color='red')
+            ax.plot(x,y,color = 'red')
 
-                start = lw/2 + x_corr
-                end = start + L*np.cos(PA)
-                x = np.linspace(start, end, 100)
-                y = np.tan(PA)*(x - lw/2 - x_corr) + B*np.cos(PA) + y_corr
+            start = y_corr
+            end = start + B*np.cos(PA)
+            y = np.linspace(start, end, 100)
+            x = -np.tan(PA)*(y - B*np.cos(PA) - y_corr) + l/2 + x_corr
 
-                ax.plot(x, y, color='red')
+            ax.plot(x,y,color = 'red')
 
-                start = y_corr
-                end = start + B*np.cos(PA)
-                y = np.linspace(start, end, 100)
-                x = -np.tan(PA)*(y - B*np.cos(PA) - y_corr) + lw/2 + x_corr
+            start = y_corr +  L*np.sin(PA)
+            end = start + B*np.cos(PA)
+            y = np.linspace(start, end, 100)
+            x = -np.tan(PA)*(y - B*np.cos(PA) - L*np.sin(PA) - y_corr) + L*np.cos(PA) + l/2 + x_corr
 
-                ax.plot(x, y, color='red')
-
-                start = y_corr + L*np.sin(PA)
-                end = start + B*np.cos(PA)
-                y = np.linspace(start, end, 100)
-                x = -np.tan(PA)*(y - B*np.cos(PA) - L*np.sin(PA) - y_corr)\
-                    + L*np.cos(PA) + lw/2 + x_corr
-
-                ax.plot(x, y, color='red')
-                ax.set_xlim(0, self.n_x_sim)
-                ax.set_ylim(0, self.n_y_sim)
+            ax.plot(x,y,color = 'red')
+            ax.set_xlim(0,self.n_x_sim)
+            ax.set_ylim(0,self.n_y_sim)
 
         else:
 
-            x = df['ra']
-            y = df['dec']
-            c = df['mag']
+          x = df['ra']
+          y = df['dec']
+          c = df['mag']
 
-            img = ax.scatter(x, y, c=c, marker=marker, cmap=cmap)
-            cb = plt.colorbar(img)
-            cb.set_label('mag (ABmag)')
+          img = ax.scatter(x, y, c=c, marker=marker, cmap=cmap)
+          cb = plt.colorbar(img)
+          cb.set_label('mag (ABmag)')
 
-            ax.invert_xaxis()
-            ax.set_xlabel('RA (Degrees)')
-            ax.set_ylabel('Dec (Degrees)')
-            ax.invert_xaxis()
-            ax.set_xlim(self.ra+fov_x/2, self.ra-fov_x/2)
-            ax.set_ylim(self.dec-fov_y/2, self.dec+fov_y/2)
+          ax.set_title(f"""Requested Center : {self.name} | {len(df)} sources
+          Fov(RA) : {fov_x} (deg) | Fov(Dec) : {fov_y} (deg)""")
+          ax.invert_xaxis()
+          ax.set_xlabel('RA (Degrees)')
+          ax.set_ylabel('Dec (Degrees)')
+          ax.invert_xaxis()
+          ax.set_xlim(self.ra+fov_x/2, self.ra-fov_x/2)
+          ax.set_ylim(self.dec-fov_y/2,self.dec+fov_y/2)
 
-            ax.xaxis.set_minor_locator(AutoMinorLocator())
-            ax.yaxis.set_minor_locator(AutoMinorLocator())
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
 
-            ax.tick_params(which='both', width=2, direction="in",
-                           top=True, right=True,
-                           bottom=True, left=True)
-
-        title1 = f'Requested Center : {self.name} {len(df)} sources'
-        title2 = f'Fov(RA) : {fov_x} (deg) | Fov(Dec) : {fov_y} (deg)'
-        ax.set_title(f"""{title1}
-                            {title2}""")
+        ax.tick_params(which='both', width=2,direction="in", top = True,right = True,
+                      bottom = True, left = True)
 
         return fig, ax
 
@@ -424,12 +442,11 @@ class Analyzer(object):
                 Choose from
                             'Digital' : Final digial image
                             'Charge'  : electrons, Light(Source + sky) +
-                                        Dark Current + Noises
+                                         Dark Current + Noises
                             'Source'  : Source + Sky + Noises
                             'Sky'     : Sky + shot_noise
                             'DC'      : Dark Current + DNFP
-                            'QE'      : Quantum efficiency fluctuation
-                                            across
+                            'QE'      : Quantum efficiency fluctuation across
                                         detector
                             'Bias'    : Charge offset
                             'PRNU'    : Photon Response Non-Uniformity
@@ -453,7 +470,7 @@ class Analyzer(object):
 
         fig, ax
         """
-        if hasattr(self, 'digital'):
+        if hasattr(self,'digital'):
             if fig is None or ax is None:
                 fig = plt.figure(figsize=figsize)
                 if show_wcs:
@@ -508,46 +525,45 @@ class Analyzer(object):
                         aperture.plot(ax=ax, color='yellow', lw=1.5)
 
             if hasattr(self, 'L'):
-                B = self.B
-                L = self.L
-                lw = len(self.spec_bins)
-                PA = self.PA
+              B = self.B
+              L = self.L
+              l = len(self.spec_bins)
+              PA = self.PA
 
-                delta = np.arctan(B/L)
-                d = np.sqrt(L**2 + B**2)/2
-                om = PA - delta
+              delta = np.arctan(B/L)
+              d = np.sqrt(L**2 + B**2)/2
+              om = PA - delta
 
-                x_corr = self.n_x//2 - d*np.cos(om) - lw/2
-                y_corr = self.n_y//2 - d*np.sin(om) - B*np.cos(PA)
+              x_corr = self.n_x//2 - d*np.cos(om) - l/2
+              y_corr = self.n_y//2 - d*np.sin(om) - B*np.cos(PA)
 
-                start = B*np.sin(PA) + lw/2 + x_corr
-                end = start + L*np.cos(PA)
-                x = np.linspace(start, end, 100)
-                y = np.tan(PA)*(x - B*np.sin(PA) - lw/2 - x_corr) + y_corr
+              start = B*np.sin(PA) + l/2 + x_corr
+              end = start + L*np.cos(PA)
+              x = np.linspace(start,end,100)
+              y = np.tan(PA)*(x - B*np.sin(PA) - l/2 - x_corr) + y_corr
 
-                ax.plot(x, y, color='red')
+              ax.plot(x,y,color = 'red')
 
-                start = lw/2 + x_corr
-                end = start + L*np.cos(PA)
-                x = np.linspace(start, end, 100)
-                y = np.tan(PA)*(x - lw/2 - x_corr) + B*np.cos(PA) + y_corr
+              start = l/2 + x_corr
+              end = start + L*np.cos(PA)
+              x = np.linspace(start, end, 100)
+              y = np.tan(PA)*(x - l/2  - x_corr) + B*np.cos(PA) + y_corr
 
-                ax.plot(x, y, color='red')
+              ax.plot(x,y,color = 'red')
 
-                start = y_corr
-                end = start + B*np.cos(PA)
-                y = np.linspace(start, end, 100)
-                x = -np.tan(PA)*(y - B*np.cos(PA) - y_corr) + lw/2 + x_corr
+              start = y_corr
+              end = start + B*np.cos(PA)
+              y = np.linspace(start, end, 100)
+              x = -np.tan(PA)*(y - B*np.cos(PA) - y_corr) + l/2 + x_corr
 
-                ax.plot(x, y, color='red')
+              ax.plot(x,y,color = 'red')
 
-                start = y_corr + L*np.sin(PA)
-                end = start + B*np.cos(PA)
-                y = np.linspace(start, end, 100)
-                x = -np.tan(PA)*(y - B*np.cos(PA) - L*np.sin(PA) - y_corr)\
-                    + L*np.cos(PA) + lw/2 + x_corr
+              start = y_corr +  L*np.sin(PA)
+              end = start + B*np.cos(PA)
+              y = np.linspace(start, end, 100)
+              x = -np.tan(PA)*(y - B*np.cos(PA) - L*np.sin(PA) - y_corr) + L*np.cos(PA) + l/2 + x_corr
 
-                ax.plot(x, y, color='red')
+              ax.plot(x,y,color = 'red')
 
             if download:
                 fig.savefig(f"{source}.png", format='png')
@@ -588,7 +604,7 @@ class Analyzer(object):
         figsize : tuple
         """
 
-        if hasattr(self, 'digital'):
+        if hasattr(self,'digital'):
             if fig is None or ax is None:
                 fig, ax = plt.subplots(1, 1, figsize=figsize)
 
@@ -623,8 +639,7 @@ class Analyzer(object):
 
     def getImage(self, source='Digital'):
         """
-        Function of retrieving image array at different
-        stages of simulation.
+        Function of retrieving image array at different stages of simulation.
 
         Parameters
         ----------
@@ -671,7 +686,7 @@ class Analyzer(object):
             print("Run Simulation")
 
     def writeto(self, name, source='Digital', user_source=None,
-                with_dark_flat=False):
+                with_dark_flat = False):
 
         """
         Function for downloading a fits file of simulated field image
@@ -697,13 +712,10 @@ class Analyzer(object):
         user_source : numpy.ndarray
                     2D numpy array user wants to save as FITS
         with_dark_flat : bool
-                        True : Output fits will provide dark
-                        and flat frames
+                          True : Output fits will provide dark and flat frames
         """
         if hasattr(self, 'digital'):
-            c1 = user_source is not None
-            c2 = isinstance(user_source, np.ndarray)
-            if c1 and c2:
+            if user_source is not None and isinstance(user_source) == np.ndarray:
                 data = user_source
             elif source == 'Digital':
                 data = self.digital
@@ -732,18 +744,25 @@ class Analyzer(object):
             hdus = [hdu]
 
             if with_dark_flat:
-                dark = self.dark_frame/self.exp_time
-                header = self.header
-                header['Frame'] = 'Dark'
+              bias = self.bias_frame
+              header = self.header
+              header['FRAME'] = 'Bias'
 
-                hdu = fits.ImageHDU(dark, header=header)
-                hdus.append(hdu)
+              hdu = fits.ImageHDU(bias, header=header)
+              hdus.append(hdu)
 
-                flat = self.flat_frame
-                header['Frame'] = 'Flat'
+              dark = self.dark_frame/self.exp_time
+              header = self.header
+              header['FRAME'] = 'Dark'
 
-                hdu = fits.ImageHDU(flat, header=header)
-                hdus.append(hdu)
+              hdu = fits.ImageHDU(dark, header=header)
+              hdus.append(hdu)
+
+              flat = self.flat_frame
+              header['FRAME'] = 'Flat'
+
+              hdu = fits.ImageHDU(flat, header=header)
+              hdus.append(hdu)
 
             hdul = fits.HDUList(hdus)
             hdul.writeto(f'{name}', overwrite=True, checksum=True)
@@ -752,10 +771,10 @@ class Analyzer(object):
 
     def writecomp(self, name):
 
-        hdu = CompImageHDU(data=self.digital, header=self.header)
-        hdus = [fits.PrimaryHDU(), hdu]
-        hdul = fits.HDUList(hdus)
-        hdul.writeto(name, overwrite=True, checksum=True)
+      hdu = CompImageHDU(data=self.digital, header=self.header)
+      hdus = [fits.PrimaryHDU(), hdu]
+      hdul = fits.HDUList(hdus)
+      hdul.writeto(name, overwrite = True, checksum = True)
 
 
 class SpecAnalyzer(object):

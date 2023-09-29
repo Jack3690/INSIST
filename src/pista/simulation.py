@@ -9,6 +9,8 @@ import torch
 import torch.nn.functional as F
 from astropy.table import vstack
 
+from tqdm.contrib import tzip
+
 import cv2
 from reproject import reproject_interp
 from reproject.mosaicking import reproject_and_coadd
@@ -62,6 +64,7 @@ class Imager(Analyzer):
         self.DCNU = True
         self.DNFP = True
         self.QN = True
+        self.Bias = True
 
         # TBD
         self.cosmic_rays = False
@@ -112,6 +115,7 @@ class Imager(Analyzer):
                           'FWC': 1.4e5,           # electrons
                           'C_ray_r': 2/50         # hits/second
                           }
+
 
         self.df = df.copy()
         self.n_x = n_x
@@ -309,8 +313,8 @@ class Imager(Analyzer):
         """
         image = np.zeros((self.n_y_sim, self.n_x_sim))
         wcs = self.create_wcs(self.n_x_sim, self.n_y_sim,
-                              self.ra, self.dec, self.pixel_scale,
-                              self.theta)
+                                   self.ra, self.dec, self.pixel_scale,
+                                   self.theta)
 
         return image, wcs
 
@@ -371,12 +375,13 @@ class Imager(Analyzer):
         shot_noise : numpy.ndarray
              Return array with shot noise
         """
-        if type(array) == np.float64 or type(array) == float:
-            n_x = self.n_y
-            n_y = self.n_x
-        else:
+        if isinstance(array, np.ndarray):
             n_x = array.shape[0]
             n_y = array.shape[1]
+        else:
+            n_x = self.n_y
+            n_y = self.n_x
+
         if type_ == 'Gaussian':
             shot_noise = np.random.normal(loc=array, scale=np.sqrt(array),
                                           size=(n_x, n_y))
@@ -413,17 +418,21 @@ class Imager(Analyzer):
         else:
             self.det_params['qe_mean'] = 1
 
-        if self.user_profiles['Bias'] is not None:
-            if self.user_profiles['Bias'].shape == (n_x, n_y):
-                self.bias_array = self.user_profiles['Bias']
-            else:
-                raise Exception(f"""User defined Bias array shape: \
-                {self.user_profiles['Bias'].shape} \
-                is not same as detector shape {(n_x,n_y)}""")
+        if self.Bias:
+          if self.user_profiles['Bias'] is not None:
+              if self.user_profiles['Bias'].shape == (n_x, n_y):
+                  self.bias_array = self.user_profiles['Bias']
+              else:
+                  raise Exception(f"""User defined Bias array shape: \
+                  {self.user_profiles['Bias'].shape} \
+                  is not same as detector shape {(n_x,n_y)}""")
+          else:
+              self.bias_array = np.random.normal(loc=self.det_params['bias'],
+                                                scale=self.det_params['RN'],
+                                                size=(n_x, n_y))
         else:
-            self.bias_array = np.random.normal(loc=self.det_params['bias'],
-                                               scale=self.det_params['RN'],
-                                               size=(n_x, n_y))
+          self.bias_array = 0
+
         if self.PRNU:
             if self.user_profiles['PRNU'] is not None:
                 if self.user_profiles['PRNU'].shape == (n_x, n_y):
@@ -521,7 +530,7 @@ class Imager(Analyzer):
         DR = const*pixel_area*(T**1.5)*DFM*np.exp(-EgT/(2*Kb*T))
         return DR
 
-    def generate_photons(self, image, patch_width, df):
+    def generate_photons(self, image, patch_width, df, zero_flux):
         """
           This function creates sims based on ABmag  on a
           small patch (2D array) of size n_pix_s*n_pix_s.
@@ -547,7 +556,7 @@ class Imager(Analyzer):
 
         x0, y0 = df['x'].astype(int), df['y'].astype(int)
         ABmag = df['mag'].values
-        flux = self.zero_flux * 10**(-ABmag/2.5)
+        flux = zero_flux* 10**(-ABmag/2.5)
         patch = self.psf
 
         x1 = x0 - patch_width_mid
@@ -555,7 +564,7 @@ class Imager(Analyzer):
         y1 = y0 - patch_width_mid
         y2 = y1 + patch_width
 
-        for x1_, x2_, y1_, y2_, flux_ in zip(x1, x2, y1, y2, flux):
+        for x1_, x2_, y1_, y2_, flux_ in tzip(x1, x2, y1, y2, flux):
             image[y1_:y2_, x1_:x2_] += flux_*patch
 
         image = image[patch_width-1:-patch_width+1,
@@ -591,6 +600,14 @@ class Imager(Analyzer):
         return digital
 
     @property
+    def bias_frame(self):
+      exp_time = self.exp_time
+      self.exp_time = 0
+      bias = self.make_ccd_image(0)
+      self.exp_time = exp_time
+      return bias
+
+    @property
     def dark_frame(self):
         return self.make_ccd_image(0)
 
@@ -601,7 +618,7 @@ class Imager(Analyzer):
         return flat
 
     def __call__(self, det_params=None, n_stack=1, stack_type='median',
-                 photometry='Aper', fwhm=3, sigma=3, detect_sources=False,
+                 photometry='Aper', fwhm=3, sigma=5, detect_sources=False,
                  ZP=None, **kwargs):
         """
           Parameters
@@ -643,8 +660,8 @@ class Imager(Analyzer):
                   During PSF photometry,
                   fwhm corresponds FWHM kernel to use for PSF photometry
           sigma: float,
-                  The numbers of standard deviations above which source has
-                  to be detected
+                  The numbers of standard deviations above which source has to be
+                  detected
           detect: bool,
                   If true, DARStarFinder is used to detect sources for aperture
                   photometry
@@ -681,7 +698,8 @@ class Imager(Analyzer):
             # Source photons
             self.source_photons = self.generate_photons(image,
                                                         self.n_pix_psf,
-                                                        self.sim_df)
+                                                        self.sim_df,
+                                                        self.zero_flux)
             # Sky photons added to source
             self.light_array = (self.source_photons + self.sky_photons)
 
@@ -706,7 +724,7 @@ class Imager(Analyzer):
                 y = np.random.randint(0, self.n_y_main)
                 self.digital[x, y] = pow(2, self.det_params['bit_res'])
 
-        self.digital = self.digital.astype(np.int16)
+        self.digital = np.round(self.digital,0).astype(np.int16)
         self.wcs = self.create_wcs(self.n_x, self.n_y,
                                    self.ra, self.dec,
                                    self.pixel_scale, self.theta)
@@ -737,13 +755,9 @@ class Imager(Analyzer):
 
         if ZP is None:
             QE = self.det_params['qe_mean']
-            zero_p_flux = self.zero_flux*QE + self.sky_bag_flux
-            zero_p_flux += np.mean(self.DR)*self.exp_time
-            zero_p_flux += self.det_params['NF'] + self.det_params['bias']
-
+            zero_p_flux = self.zero_flux*QE
             zero_p_flux *= self.gain
             ZP = 2.5*np.log10(zero_p_flux)
-            # Observed Zero Point Magnitude in DN
             self.ZP = ZP
         self.header['ZP'] = self.ZP
 
@@ -751,6 +765,26 @@ class Imager(Analyzer):
                          data=self.digital.astype(float),
                          photometry=photometry, fwhm=fwhm, sigma=sigma,
                          detect_sources=detect_sources, ZP=ZP)
+
+    def add_stars(self, image_array, zero_flux):
+        x_size = image_array.shape[0]
+        y_size = image_array.shape[1]
+
+        patch_width = self.n_pix_psf
+        if self.n_x == x_size and self.n_y == y_size:
+          image, _ = self.init_image_array()
+
+          # Source photons
+          source_photons = self.generate_photons(image,
+                                                 self.n_pix_psf,
+                                                 self.sim_df,
+                                                 self.zero_flux)
+          if self.shot_noise:
+                type_ = self.det_params['shot_noise']
+                source_photons = self.compute_shot_noise(source_photons,
+                                                         type_=type_)
+
+          return source_photons + image_array
 
     def add_distortion(self, xmap, ymap):
         """Function for addition distortion using
@@ -771,8 +805,8 @@ class Imager(Analyzer):
         self.digital = self.org_digital
 
     def __del__(self):
-        for i in self.__dict__:
-            del i
+      for i in self.__dict__:
+        del i
 
 
 class Mosaic(Imager):

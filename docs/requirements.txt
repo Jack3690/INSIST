@@ -5,4 +5,4 @@ ipython
 ipykernel
 jupyter-sphinx
 tqdm
-../setup.py
+.

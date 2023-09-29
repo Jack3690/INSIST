@@ -21,6 +21,7 @@ from pathlib import Path
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import os
 
 data_path = Path(Sim.__file__).parent.joinpath()
 matplotlib.rcParams['font.size']=7

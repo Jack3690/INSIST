@@ -766,7 +766,7 @@ class Imager(Analyzer):
                          photometry=photometry, fwhm=fwhm, sigma=sigma,
                          detect_sources=detect_sources, ZP=ZP)
 
-    def add_stars(self, image_array, zero_flux):
+    def add_stars(self, image_array, zero_flux,df):
         x_size = image_array.shape[0]
         y_size = image_array.shape[1]
 
@@ -777,8 +777,8 @@ class Imager(Analyzer):
           # Source photons
           source_photons = self.generate_photons(image,
                                                  self.n_pix_psf,
-                                                 self.sim_df,
-                                                 self.zero_flux)
+                                                 df,
+                                                 zero_flux)
           if self.shot_noise:
                 type_ = self.det_params['shot_noise']
                 source_photons = self.compute_shot_noise(source_photons,

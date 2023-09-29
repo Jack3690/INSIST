@@ -9,3 +9,4 @@ scipy
 photutils
 opencv-python
 torch
+tqdm

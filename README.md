@@ -5,8 +5,8 @@
 This is a repository dedicated to data simulations for the Indian Spectroscopic and Imaging Space Telescope (INSIST) project. It contains Jupyter Notebooks which can be hosted on cloud platforms such as [Google Colab](https://colab.research.google.com/notebooks/intro.ipynb?utm_source=scs-index), [Binder](https://mybinder.org/), and [Gradient](https://gradient.run/notebooks), and webtools which can be accessed using [Binder](https://mybinder.org/).
 
 # Packages
-## PISTA : Python Image Simulation and Testing Application
-A python package aimed at simulating astronomical images. The routine simulates individual stars and adds different noises. The input parameter space is designed to inculcate observational parameters, telescope parameters and detector characteristics.
+## PISTA: Python Image Simulation and Testing Application
+A Python package aimed at simulating astronomical images. The routine generates individual stars to an image and adds different parameterized noises. The input parameter space is designed to inculcate observational parameters, telescope parameters, and detector characteristics.
 
 
 ### Installation
@@ -15,6 +15,8 @@ pip install insist-pista
 ```
 
 # Web Tools
+* Exposure Time Calculator      : [Streamlit](https://insist-etc.streamlit.app/)
+* PSF Simulator                 : [Streamlit](https://insist-psf.streamlit.app/)
 * PISTA Webtool                 : [Streamlit](https://jack3690-insist-webtools-pista-webtool-d79yxm.streamlitapp.com/)
 * Exposure Time Calculator Tool : [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Jack3690/INSIST/main?urlpath=%2Fvoila%2Frender%2FExposure_Time_Calculator_Tool.ipynb%3Fvoila-theme%3Ddark) (Work in progress)
 

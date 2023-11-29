@@ -1,5 +1,6 @@
 urllib3<2
 sphinx
+sphinx-rtd-theme
 torch
 ipython
 ipykernel

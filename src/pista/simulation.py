@@ -12,6 +12,7 @@ from astropy.table import vstack
 from tqdm.contrib import tzip
 
 import cv2
+import os
 from reproject import reproject_interp
 from reproject.mosaicking import reproject_and_coadd
 from reproject.mosaicking import find_optimal_celestial_wcs
@@ -66,6 +67,12 @@ class Imager(Analyzer):
         self.QN = True
         self.Bias = True
 
+        # Detector
+        self.Cal0 = False
+
+        # Flux
+        self.Cal1 = False
+
         # TBD
         self.cosmic_rays = False
 
@@ -99,8 +106,8 @@ class Imager(Analyzer):
         self.det_params = {
                           'shot_noise': 'Gaussian',
                           'M_sky': 27,
-                          'qe_response':  [],     # Wavelength dependence
-                          'qe_mean': 0.95,        # Effective QE
+                          'qe_response':  '',     # Wavelength dependence
+                          'qe_mean': None,        # Effective QE
                           'bias': 35,             # electrons
                           'G1': 1,
                           'bit_res': 14,
@@ -126,9 +133,9 @@ class Imager(Analyzer):
         self.response_funcs = self.tel_params['response_funcs']
         self.coeffs = self.tel_params['coeffs']
 
-        # DN/electrons
-        self.gain = pow(2, self.det_params['bit_res'])/self.det_params['FWC']
-        self.gain *= self.det_params['G1']
+        # electrons/ADUs
+        self.gain = self.det_params['FWC']/pow(2, self.det_params['bit_res'])
+        self.gain /= self.det_params['G1']
 
         self.tel_area = np.pi*(self.tel_params['aperture']/2)**2
 
@@ -150,13 +157,6 @@ class Imager(Analyzer):
         self.name = f" RA : {ra_n} degrees, Dec : {dec_n} degrees"
 
         self.generate_sim_field(plot)
-
-        # Init Cosmic Rays
-        # area = ((n_x*self.pixel_scale)/3600)*((n_y*self.pixel_scale)/3600)
-
-        # eff_area = (0.17/area)*self.exp_time
-
-        # self.n_cosmic_ray_hits = int(eff_area*self.det_params['C_ray_r'])
 
     def generate_sim_field(self, plot):
         """This function creates array with FoV a bit wider
@@ -200,9 +200,10 @@ class Imager(Analyzer):
             wav = np.linspace(1000, 10000, 10000)
             flux = 3631/(3.34e4*wav**2)   # AB flux
 
+
             fig, ax, _, params = bandpass(wav, flux, self.response_funcs,
                                           plot=plot)
-
+            self.fig_bp, self.ax_bp = fig, ax
             lambda_phot, int_flux, int_flux_Jy, W_eff, flux_ratio = params
 
             self.lambda_phot = lambda_phot
@@ -261,7 +262,12 @@ class Imager(Analyzer):
         elif ext == 'fits':
             image = fits.open(self.psf_file)[0].data
 
+        if image.min()<0:
+          print("PSF data has negative values!\n Modulus of PSF used instead")
+          image =  abs(image)
+
         image /= image.sum()  # Flux normalized to 1
+
         self.psf = image
 
         self.n_pix_psf = self.psf.shape[0]
@@ -280,6 +286,9 @@ class Imager(Analyzer):
 
         coords = np.array([df['ra'], df['dec']])
         pix = np.array(wcs.world_to_array_index_values(coords.T))
+        if len(df)<2:
+          raise print("Input DataFrame must have atleast 2 sources")
+
         df['x'] = np.flip(pix[:, 0])
         df['y'] = np.flip(pix[:, 1])
 
@@ -404,20 +413,27 @@ class Imager(Analyzer):
         n_x = self.n_y
         n_y = self.n_x
 
+         # Quantum Efficiency
         if self.QE:
-            if len(self.det_params['qe_response']) != 0:
+          if self.det_params['qe_mean'] is None:
+            if os.path.exists(self.det_params['qe_response']):
                 wav = np.linspace(1000, 10000, 10000)
                 flux = 3631/(3.34e4*wav**2)   # AB flux
 
+                resp = f"{self.det_params['qe_response']},1,100"
+
                 _, _, _, params = bandpass(wav, flux,
-                                           self.det_params['qe_response'],
-                                           plot=False)
+                                            [resp],
+                                            plot=False)
 
                 _, _, _, _, flux_ratio = params
                 self.det_params['qe_mean'] = flux_ratio
+            else:
+              raise Exception("Path does not exists!")
         else:
-            self.det_params['qe_mean'] = 1
+          self.det_params['qe_mean'] = 1
 
+        # Bias
         if self.Bias:
           if self.user_profiles['Bias'] is not None:
               if self.user_profiles['Bias'].shape == (n_x, n_y):
@@ -433,6 +449,7 @@ class Imager(Analyzer):
         else:
           self.bias_array = 0
 
+        # Photon Response Not Uniformity
         if self.PRNU:
             if self.user_profiles['PRNU'] is not None:
                 if self.user_profiles['PRNU'].shape == (n_x, n_y):
@@ -449,7 +466,23 @@ class Imager(Analyzer):
         else:
             self.PRNU_array = 0
 
-        if self.DC:
+        # Dark Current
+        self.compute_DC()
+
+        # Quantization Noise
+        if self.QN:
+            # electrons
+            A = self.det_params['FWC']
+            B = pow(2, self.det_params['bit_res'])*np.sqrt(12)
+            self.QN_value = (A/B)
+            self.QN_array = self.QN_value*np.random.randint(-1, 2,
+                                                            size=(n_x, n_y))
+        else:
+            self.QN_array = 0
+    def compute_DC(self):
+      n_x = self.n_y
+      n_y = self.n_x
+      if self.DC:
             if self.user_profiles['DC'] is not None:
                 if self.user_profiles['DC'].shape == (n_x, n_y):
                     self.DR = self.user_profiles['DC']
@@ -493,19 +526,9 @@ class Imager(Analyzer):
                     arr = self.compute_shot_noise(self.det_params['DNFP'])
                     self.DNFP_array = arr
                 self.DC_array += self.DNFP_array
-        else:
-            self.DR = 0
-            self.DC_array = 0
-        # Quantization Noise
-        if self.QN:
-            # electrons
-            A = self.det_params['FWC']
-            B = pow(2, self.det_params['bit_res'])*np.sqrt(12)
-            self.QN_value = (A/B)
-            self.QN_array = self.QN_value*np.random.randint(-1, 2,
-                                                            size=(n_x, n_y))
-        else:
-            self.QN_array = 0
+      else:
+          self.DR = 0
+          self.DC_array = 0
 
     def dark_current(self, T, DFM, pixel_area):
         """
@@ -573,8 +596,6 @@ class Imager(Analyzer):
         return image
 
     def make_ccd_image(self, light_array):
-        # Compute Coefficient arrays
-        self.compute_coeff_arrays()
 
         # QE pixel to pixel variation | Source photoelectrons
         self.source_photoelec = light_array*self.det_params['qe_mean']
@@ -592,7 +613,7 @@ class Imager(Analyzer):
                                            + self.bias_array
 
         # Photoelec to ADUs
-        digital = (self.charge*self.gain).astype(int)
+        digital = np.round(self.charge/self.gain).astype(int)
 
         # Full well condition
         digital = np.where(digital >= pow(2, self.det_params['bit_res']),
@@ -603,23 +624,24 @@ class Imager(Analyzer):
     def bias_frame(self):
       exp_time = self.exp_time
       self.exp_time = 0
+      self.compute_DC()
       bias = self.make_ccd_image(0)
       self.exp_time = exp_time
+      self.compute_DC()
       return bias
 
     @property
     def dark_frame(self):
-        return self.make_ccd_image(0)
+        return (self.make_ccd_image(0) - self.bias_frame)
 
     @property
     def flat_frame(self):
-        flat = self.make_ccd_image(10)
-        flat = flat/flat.max()
+        flat = self.make_ccd_image(100)
+        flat = flat/flat.mean()
         return flat
 
-    def __call__(self, det_params=None, n_stack=1, stack_type='median',
-                 photometry='Aper', fwhm=3, sigma=5, detect_sources=False,
-                 ZP=None, **kwargs):
+    def __call__(self, det_params=None, photometry='Aper', fwhm=1.5, sigma=5,
+                 detect_sources=False, ZP=None, **kwargs):
         """
           Parameters
           ----------
@@ -685,46 +707,38 @@ class Imager(Analyzer):
             self.det_params.update(det_params)
             A = pow(2, self.det_params['bit_res'])
             B = self.det_params['FWC']
-            self.gain = A/B
 
-            self.gain *= self.det_params['G1']
+            self.gain = B/A
 
-        digital_stack = []
+            self.gain /= self.det_params['G1']
 
-        for i in range(n_stack):
+        image, _ = self.init_image_array()
 
-            image, _ = self.init_image_array()
+        # Source photons
+        self.source_photons = self.generate_photons(image,
+                                                    self.n_pix_psf,
+                                                    self.sim_df,
+                                                    self.zero_flux)
+        # Sky photons added to source
+        self.light_array = (self.source_photons + self.sky_photons)
 
-            # Source photons
-            self.source_photons = self.generate_photons(image,
-                                                        self.n_pix_psf,
-                                                        self.sim_df,
-                                                        self.zero_flux)
-            # Sky photons added to source
-            self.light_array = (self.source_photons + self.sky_photons)
+        # Source shot_noise
+        if self.shot_noise:
+            type_ = self.det_params['shot_noise']
+            self.light_array = self.compute_shot_noise(self.light_array,
+                                                        type_=type_)
+        # Compute Coefficient arrays
+        self.compute_coeff_arrays()
 
-            # Source shot_noise
-            if self.shot_noise:
-                type_ = self.det_params['shot_noise']
-                self.light_array = self.compute_shot_noise(self.light_array,
-                                                           type_=type_)
-            self.digital = self.make_ccd_image(self.light_array)
+        self.digital = self.make_ccd_image(self.light_array)
 
-            digital_stack.append(self.digital)
-
-        digital_stack = np.array(digital_stack)
-        if n_stack > 1:
-            if stack_type == 'median':
-                self.digital = np.median(digital_stack, axis=0)
-            elif stack_type == 'mean':
-                self.digital = np.median(digital_stack, axis=0)
         if self.cosmic_rays:
             for i in range(self.n_cosmic_ray_hits):
                 x = np.random.randint(0, self.n_x_main)
                 y = np.random.randint(0, self.n_y_main)
                 self.digital[x, y] = pow(2, self.det_params['bit_res'])
 
-        self.digital = np.round(self.digital,0).astype(np.int16)
+
         self.wcs = self.create_wcs(self.n_x, self.n_y,
                                    self.ra, self.dec,
                                    self.pixel_scale, self.theta)
@@ -742,23 +756,33 @@ class Imager(Analyzer):
                                    y_left=y_left, y_right=y_right)
 
         self.header = self.wcs.to_header()
-        self.header['gain'] = self.det_params['G1']
-        self.header['Temp'] = str(self.det_params['T']) + 'K'
-        self.header['bias'] = self.det_params['bias']
-        self.header['RN'] = self.det_params['RN']
-        self.header['DR'] = np.mean(self.DR)
-        self.header['NF'] = self.det_params['NF']
-        self.header['EXPTIME'] = self.exp_time
-        self.header['BUNIT'] = 'DN'
-
-        self.org_digital = self.digital.astype(float).copy()
+        self.header['gain'] = (np.mean(self.det_params['G1']), 'e/ADU')
+        self.header['Temp'] = (str(np.mean(self.det_params['T'])),'K')
+        self.header['bias'] = (np.mean(self.det_params['bias']),'e')
+        self.header['RN'] = (np.mean(self.det_params['RN']),'e')
+        self.header['DR'] = (np.mean(self.DR),'e/s/pix')
+        self.header['NF'] = (np.mean(self.det_params['NF']),'e')
+        self.header['EXPTIME'] = (self.exp_time, 'seconds')
+        self.header['BUNIT'] = 'ADU'
+        self.header['CAL_LEV']= 0
 
         if ZP is None:
             QE = self.det_params['qe_mean']
             zero_p_flux = self.zero_flux*QE
-            zero_p_flux *= self.gain
             ZP = 2.5*np.log10(zero_p_flux)
             self.ZP = ZP
+
+        if self.Cal0:
+          # Bias and Dark Correction
+          self.digital = self.digital - self.dark_frame - self.bias_frame
+          # Flat field correction
+          self.digital /= self.flat_frame
+
+          self.header['CAL_LEV']= 1
+
+        self.org_digital = self.digital.astype(float).copy()
+
+
         self.header['ZP'] = self.ZP
 
         super().__call__(df=self.img_df, wcs=self.wcs,
@@ -766,9 +790,9 @@ class Imager(Analyzer):
                          photometry=photometry, fwhm=fwhm, sigma=sigma,
                          detect_sources=detect_sources, ZP=ZP)
 
-    def add_stars(self, image_array, zero_flux,df):
-        x_size = image_array.shape[0]
-        y_size = image_array.shape[1]
+    def add_stars(self, image_array, zero_flux, df):
+        x_size = image_array.shape[1]
+        y_size = image_array.shape[0]
 
         patch_width = self.n_pix_psf
         if self.n_x == x_size and self.n_y == y_size:
@@ -783,8 +807,10 @@ class Imager(Analyzer):
                 type_ = self.det_params['shot_noise']
                 source_photons = self.compute_shot_noise(source_photons,
                                                          type_=type_)
+        else:
+         print(f"Expected shape: ({self.n_x}, {self.n_y}).\n Provided shape: ({x_size}, {y_size})")
 
-          return source_photons + image_array
+        return source_photons + image_array
 
     def add_distortion(self, xmap, ymap):
         """Function for addition distortion using

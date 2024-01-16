@@ -7,16 +7,19 @@ from matplotlib.ticker import AutoMinorLocator
 
 from photutils.detection import DAOStarFinder
 from photutils.psf import DAOPhotPSFPhotometry, FittableImageModel
-from photutils.background import MMMBackground, MADStdBackgroundRMS
-from photutils.background import Background2D, LocalBackground
+from photutils.background import MMMBackground
+from photutils.background import Background2D
+from photutils.aperture import aperture_photometry
+from photutils.aperture import CircularAperture, CircularAnnulus, ApertureStats
 
 from astropy.io import fits
+import astropy.units as u
 from astropy.io.fits import CompImageHDU
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.stats import SigmaClip, sigma_clipped_stats
+from astropy.coordinates import SkyCoord
+from astropy.table import Table, join_skycoord, join
 
-from astropy.stats import sigma_clipped_stats
-from .utils import Xmatch
 
 import numpy as np
 
@@ -109,23 +112,36 @@ class Analyzer(object):
       # if detect flag is set to True, detect sources in the image
       if detect:
 
-          bkgrms = MADStdBackgroundRMS()
           mmm_bkg = MMMBackground()
 
-          sigma_clip = SigmaClip(sigma=3.0)
-          coverage_mask = (data == 0)
+          sigma_clip = SigmaClip(sigma_lower=2.25, sigma_upper=2.00)
 
-          bkg = Background2D(data, (100, 100), filter_size=(3, 3),
-                            sigma_clip=sigma_clip, bkg_estimator=mmm_bkg,
-                              coverage_mask=coverage_mask, fill_value=0.0)
+          if self.Cal0:
+            print("Performing photometry on Level 1 data")
+            mask = np.where(np.isnan(data) | np.isinf(data) | \
+                                                (data<0),1, 0)
+          else:
+            print("Performing photometry on Level 0 data")
+            mask = np.where(data<0,1,0)
 
-          data_bkgsub = data.copy()
-          data_bkgsub = data_bkgsub - bkg.background
+          try:
+            bkg = Background2D(data, (64, 64),
+                                  filter_size=(3, 3),
+                                  sigma_clip=sigma_clip,
+                                  bkg_estimator=mmm_bkg,
+                               #   coverage_mask=mask,
+                                  fill_value = 0.0)
+            data_bkgsub = data.copy() - bkg.background
+          except:
+            print("Background Estimation failed")
+            data_bkgsub = data
+
 
           _, _, std = sigma_clipped_stats(data_bkgsub)
 
           daofind = DAOStarFinder(threshold=sigma*std, fwhm=fwhm)
-          sources = daofind(data_bkgsub)
+
+          sources = daofind(data_bkgsub, mask=mask)
           # Get the source positions
           positions = np.transpose((sources['xcentroid'],
                                     sources['ycentroid']))
@@ -138,30 +154,33 @@ class Analyzer(object):
           pix = wcs.world_to_pixel_values(coords.T)
           positions = np.array(pix)
 
-
       # create circular aperture object
-      self.aps = aper.CircularAperture(positions, r=2*fwhm)
+      self.aps = CircularAperture(positions, r=2*fwhm)
       # count number of pixels within the aperture
       ap_pix = self.aps.area
       # create circular annulus object
-      self.bags = aper.CircularAnnulus(positions, r_in=3*fwhm,
+
+      self.bags = CircularAnnulus(positions, r_in=3*fwhm,
                                         r_out=5*fwhm)
       # count number of pixels within the annulus
-      bag_pix = self.bags.area
+      sky_median = ApertureStats(data, self.bags).median
 
       # perform aperture photometry on the data
-      phot_table = aper.aperture_photometry(data, [self.aps, self.bags])
+      phot_table = aperture_photometry(data, self.aps)
 
-      # calculate sky flux
-      phot_table['sky_flux'] = phot_table['aperture_sum_1']*(ap_pix/bag_pix)
+      # calculate sky flux. electrons
+      phot_table['sky_flux'] = sky_median*ap_pix*self.gain*u.electron
+
       # calculate source flux
-      phot_table['flux'] = phot_table['aperture_sum_0'].value - \
-          phot_table['sky_flux'].value
+      phot_table['flux'] = (self.gain*phot_table['aperture_sum'].value - \
+                           phot_table['sky_flux'].value)*u.electron
+
       # calculate error on the source flux
-      phot_table['flux_err'] = np.sqrt(phot_table['flux'].value + \
-                                       phot_table['sky_flux'].value  + \
-                                       self.det_params['RN']*self.gain*ap_pix +\
-                                       self.DC_array.mean()*self.gain*ap_pix)
+      NE_2 =  phot_table['flux'].value + phot_table['sky_flux'].value + \
+              (self.DC_array.mean() + self.det_params['RN']**2 + \
+                            (self.gain/2)**2)*ap_pix
+
+      phot_table['flux_err'] = np.sqrt(NE_2)*u.electron
 
       # calculate signal to noise ratio
       phot_table['SNR'] = phot_table['flux']/phot_table['flux_err']
@@ -175,29 +194,25 @@ class Analyzer(object):
       else:
           coords = np.array(wcs.pixel_to_world_values(positions))
 
-          phot_table['ra'] = coords[:, 0]
-          phot_table['dec'] = coords[:, 1]
+          phot_table['SkyCoord'] = SkyCoord(ra = coords[:, 0],
+                                            dec = coords[:, 1],
+                                            unit = 'deg')
+          tab2 = Table.from_pandas(df)
 
-          matched = Xmatch(phot_table, df, 3*fwhm)
-          mag_in = []
-          sep = []
-          for i, j, k in matched:
-              if j is not None:
-                  mag_in.append(df['mag'].values[j])
-                  sep.append(k)
-              else:
-                  mag_in.append(np.nan)
-                  sep.append(np.nan)
+          tab2['SkyCoord'] = SkyCoord(ra = df['ra'],
+                                      dec = df['dec'],
+                                      unit = 'deg')
 
-          phot_table['mag_in'] = mag_in
-          phot_table['sep'] = sep
+          min_dist = join_skycoord(2*self.pixel_scale*u.arcsec)
 
-      phot_table['mag_out'] = -2.5*np.log10(phot_table['flux']) + ZP
-      phot_table['mag_err'] = 1.082/phot_table['SNR']
+          phot_table = join(phot_table, tab2['mag', 'x', 'y', 'SkyCoord'],
+                           join_funcs={'SkyCoord': min_dist})
 
-      coords = np.array(wcs.pixel_to_world_values(positions))
-      phot_table['ra'] = coords[:, 0]
-      phot_table['dec'] = coords[:, 1]
+          phot_table.rename_column('mag', 'mag_in')
+
+      phot_table['mag_out'] = -2.5*np.log10(phot_table['flux'].value) + ZP
+      phot_table['mag_err'] = 1.082/phot_table['SNR'].value
+
       self.phot_table = phot_table
 
     def psf_photometry(self, data, wcs, df, fwhm, sigma, ZP):
@@ -256,46 +271,83 @@ class Analyzer(object):
         psf_model = FittableImageModel(self.psf)
         self.psf_model = psf_model
 
-        photometry = DAOPhotPSFPhotometry(crit_separation=2,
-                                              threshold=mean + sigma*std,
-                                              fwhm=fwhm,
-                                              aperture_radius=3,
-                                              psf_model=psf_model,
-                                              fitter=LevMarLSQFitter(),
-                                              fitshape=(11, 11),
-                                              niters=3)
+        fitter = LevMarLSQFitter()
+        sigma_clip = SigmaClip(sigma=3.00)
 
-        phot_table = photometry(image=data)
+        """
+        bkgstat = MMMBackground(sigma_clip=sigma_clip)
+        localbkg_estimator = LocalBackground(15, 35, bkgstat)
+
+        fwhm_psf = fwhm
+
+        mmm_bkg = MMMBackground()
+        sigma_clip = SigmaClip(sigma=3)
+
+        daofind = DAOStarFinder(threshold=5*std, fwhm=fwhm_psf)
+        grouper = SourceGrouper(2*fwhm_psf)
+
+        photometry = IterativePSFPhotometry(finder=daofind, grouper=grouper,
+                                  localbkg_estimator=localbkg_estimator,
+                                  psf_model=psf_model,fitter=fitter,
+                                  maxiters=1, fit_shape=(11,11),
+                                  aperture_radius=3*fwhm,
+                                  sub_shape=self.psf.shape,
+                                  progress_bar=True) """
+
+        photometry = DAOPhotPSFPhotometry(crit_separation=3,
+                                          threshold = mean + sigma*std,
+                                          fwhm=2,
+                                          psf_model=psf_model,
+                                          fitshape=(7,7),
+                                          sigma=sigma,
+                                          fitter=fitter,
+                                          niters=3, aperture_radius=6)
+
+        phot_table = photometry(data)
+
+        """
+        self.resid = photometry.make_residual_image(data_bkgsub,
+                                                    self.psf.shape)"""
+
         positions = np.array([phot_table['x_fit'], phot_table['y_fit']]).T
         coords = np.array(wcs.pixel_to_world_values(positions))
 
-        phot_table['ra'] = coords[:, 0]
-        phot_table['dec'] = coords[:, 1]
-        ap_pix = 11*11
-        flux_err = np.sqrt(phot_table['flux_unc']**2 + \
-                           self.det_params['RN']*self.gain*ap_pix + \
-                           self.DC_array.mean()*self.gain*ap_pix)
-        phot_table['SNR'] = phot_table['flux_fit']/flux_err
+        ap_pix = 7*7
 
+        phot_table['flux_fit_err'] = self.gain*phot_table['flux_unc']
 
-        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux_fit'])
+        phot_table['flux_fit'] = self.gain*phot_table['flux_fit']*u.electron
+
+        NE_2 = (phot_table['flux_fit'].value + \
+                phot_table['flux_fit_err'].value) + \
+                (self.DC_array.mean() + self.det_params['RN']**2 + \
+                (self.gain/2)**2)*ap_pix
+
+        phot_table['flux_err'] = np.sqrt(NE_2)*u.electron
+
+        phot_table['SNR'] = phot_table['flux_fit']/ phot_table['flux_err']
+
+        phot_table['mag_out'] = -2.5*np.log10(phot_table['flux_fit'].value)
         phot_table['mag_out'] += ZP
-        phot_table['mag_err'] = 1.082/phot_table['SNR']
+        phot_table['mag_err'] = 1.082/phot_table['SNR'].value
 
-        matched = Xmatch(phot_table, df, 3*fwhm)
-        mag_in = []
-        sep = []
-        for i, j, k in matched:
-            if j is not None:
-                mag_in.append(df['mag'].values[j])
-                sep.append(k)
-            else:
-                mag_in.append(np.nan)
-                sep.append(np.nan)
+        phot_table['SkyCoord'] = SkyCoord(ra = coords[:, 0],
+                                            dec = coords[:, 1],
+                                            unit = 'deg')
+        tab2 = Table.from_pandas(df)
 
-        phot_table['mag_in'] = mag_in
-        phot_table['sep'] = sep
+        tab2['SkyCoord'] = SkyCoord(ra = df['ra'],
+                                    dec = df['dec'],
+                                      unit = 'deg')
+        min_dist = join_skycoord(2*self.pixel_scale*u.arcsec)
+        phot_table = join(phot_table, tab2['mag', 'x', 'y', 'SkyCoord'],
+                          join_funcs={'SkyCoord': min_dist})
 
+        phot_table.rename_column('mag', 'mag_in')
+
+        positions = np.array([phot_table['x_fit'].value,
+                              phot_table['y_fit'].value]).T
+        self.aps = CircularAperture(positions, r=2*fwhm)
 
         self.phot_table = phot_table
 
@@ -452,6 +504,8 @@ class Analyzer(object):
                             'PRNU'    : Photon Response Non-Uniformity
                             'DNFP'    : Dark Noise Fixed Pattern
                             'QN'      : Quantization Noise
+                            'Resid'   : Residual Image If PSF Photometry
+                                         was performed
 
 
         fig : matplotlib.pyplot.figure
@@ -480,30 +534,36 @@ class Analyzer(object):
 
             norm = None
             if source == 'Digital':
-                data = self.digital
+                data = self.digital.copy()
                 norm = col.LogNorm()
             elif source == 'Charge':
-                data = self.charge
+                data = self.charge.copy()
                 norm = col.LogNorm()
             elif source == 'Source':
-                data = self.light_array
+                data = self.light_array.copy()
                 norm = col.LogNorm()
             elif source == 'Sky':
-                data = self.sky_photons
+                data = self.sky_photons.copy()
             elif source == 'DC':
-                data = self.DC_array
+                data = self.DC_array.copy()
             elif source == 'Bias':
-                data = self.bias_array
+                data = self.bias_array.copy()
             elif source == 'PRNU':
-                data = self.PRNU_array
+                data = self.PRNU_array.copy()
             elif source == 'DNFP':
                 norm = col.LogNorm()
-                data = self.DNFP_array
+                data = self.DNFP_array.copy()
             elif source == 'QN':
-                data = self.QN_array
+                data = self.QN_array.copy()
+            elif source == 'Resid':
+              if self.photometry_type == "PSF":
+                data = self.resid.copy()
+              else:
+                print("Run PSF Photometry!")
+                return None, None
             else:
                 print("Invalid Input")
-                return None
+                return None, None
 
             if data.min() < 0:
                 print('Negative values in image. Increase Bias')
@@ -516,13 +576,20 @@ class Analyzer(object):
             ax.set_title(f'{source} \nRequested center : {self.name}')
             ax.grid(False)
 
-            if overlay_apertures and self.photometry_type == "Aper":
+            if overlay_apertures:
+              if self.photometry_type == "Aper":
                 for aperture in self.aps:
                     if aperture is not None:
                         aperture.plot(ax=ax, color='red', lw=1.5)
                 for aperture in self.bags:
                     if aperture is not None:
                         aperture.plot(ax=ax, color='yellow', lw=1.5)
+
+              elif self.photometry_type == "PSF":
+                for aperture in self.aps:
+                    if aperture is not None:
+                        aperture.plot(ax=ax, color='red', lw=1.5)
+
 
             if hasattr(self, 'L'):
               B = self.B
@@ -751,7 +818,7 @@ class Analyzer(object):
               hdu = fits.ImageHDU(bias, header=header)
               hdus.append(hdu)
 
-              dark = self.dark_frame/self.exp_time
+              dark = self.dark_frame
               header = self.header
               header['FRAME'] = 'Dark'
 
@@ -762,6 +829,11 @@ class Analyzer(object):
               header['FRAME'] = 'Flat'
 
               hdu = fits.ImageHDU(flat, header=header)
+              hdus.append(hdu)
+
+              header['FRAME'] = 'PSF'
+
+              hdu = fits.ImageHDU(self.psf, header=header)
               hdus.append(hdu)
 
             hdul = fits.HDUList(hdus)

@@ -86,7 +86,8 @@ class Imager(Analyzer):
                            'response_funcs': [],
                            'sky_resp': sky_resp,
                            'coeffs': 1,
-                           'theta': 0
+                           'theta': 0,
+                           'M_sky': 27,
                            }
 
         self.user_profiles = {
@@ -105,7 +106,6 @@ class Imager(Analyzer):
 
         self.det_params = {
                           'shot_noise': 'Gaussian',
-                          'M_sky': 27,
                           'qe_response':  '',     # Wavelength dependence
                           'qe_mean': None,        # Effective QE
                           'bias': 35,             # electrons
@@ -236,7 +236,7 @@ class Imager(Analyzer):
 
         self.zero_flux = self.exp_time*self.tel_area*self.photons
         self.zero_flux *= self.coeffs
-        self.M_sky_p = self.det_params['M_sky'] \
+        self.M_sky_p = self.tel_params['M_sky'] \
             - 2.5*np.log10(self.pixel_scale**2)
         self.sky_bag_flux = self.zero_flux*pow(10, -0.4*self.M_sky_p)
 
@@ -415,21 +415,23 @@ class Imager(Analyzer):
 
          # Quantum Efficiency
         if self.QE:
-          if self.det_params['qe_mean'] is None:
-            if os.path.exists(self.det_params['qe_response']):
-                wav = np.linspace(1000, 10000, 10000)
-                flux = 3631/(3.34e4*wav**2)   # AB flux
+            if self.det_params['qe_mean'] is None and len(self.det_params['qe_response'])>2:
+                if os.path.exists(self.det_params['qe_response']):
+                    wav = np.linspace(1000, 10000, 10000)
+                    flux = 3631/(3.34e4*wav**2)   # AB flux
 
-                resp = f"{self.det_params['qe_response']},1,100"
+                    resp = f"{self.det_params['qe_response']},1,100"
 
-                _, _, _, params = bandpass(wav, flux,
-                                            [resp],
-                                            plot=False)
+                    _, _, _, params = bandpass(wav, flux,
+                                                [resp],
+                                                plot=False)
 
-                _, _, _, _, flux_ratio = params
-                self.det_params['qe_mean'] = flux_ratio
+                    _, _, _, _, flux_ratio = params
+                    self.det_params['qe_mean'] = flux_ratio
+                else:
+                    raise Exception("Path does not exists!")
             else:
-              raise Exception("Path does not exists!")
+                self.det_params['qe_mean'] = 1
         else:
           self.det_params['qe_mean'] = 1
 

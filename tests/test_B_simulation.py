@@ -7,9 +7,9 @@ import pandas as pd
 
 @pytest.fixture
 def gen_imager_input():
-    ra = [0]
-    dec = [0]
-    mag = [18]
+    ra = [0,0]
+    dec = [0,1/3600]
+    mag = [18,19]
 
     df = pd.DataFrame(zip(ra, dec, mag), columns=['ra', 'dec', 'mag'])
     response_funcs = [f'{data_dir}/INSIST/UV/Filter.dat, 1, 100',

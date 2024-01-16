@@ -36,3 +36,6 @@ src/pista/data/PSF/INSIST/off_axis_poppy.npy
 src/pista/data/PSF/INSIST/on_axis_Zmax.npy
 src/pista/data/PSF/INSIST/on_axis_hcipy.npy
 src/pista/data/PSF/INSIST/on_axis_poppy.npy
+tests/test_A_utils.py
+tests/test_B_simulation.py
+tests/test_C_analysis.py

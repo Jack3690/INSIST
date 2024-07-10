@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 
 from photutils.detection import DAOStarFinder
-from photutils.psf import DAOPhotPSFPhotometry, FittableImageModel
+from photutils.psf import IterativePSFPhotometry, FittableImageModel
 from photutils.background import MMMBackground
 from photutils.background import Background2D
 from photutils.aperture import aperture_photometry
@@ -274,7 +274,6 @@ class Analyzer(object):
         fitter = LevMarLSQFitter()
         sigma_clip = SigmaClip(sigma=3.00)
 
-        """
         bkgstat = MMMBackground(sigma_clip=sigma_clip)
         localbkg_estimator = LocalBackground(15, 35, bkgstat)
 
@@ -285,7 +284,7 @@ class Analyzer(object):
 
         daofind = DAOStarFinder(threshold=5*std, fwhm=fwhm_psf)
         grouper = SourceGrouper(2*fwhm_psf)
-
+    
         photometry = IterativePSFPhotometry(finder=daofind, grouper=grouper,
                                   localbkg_estimator=localbkg_estimator,
                                   psf_model=psf_model,fitter=fitter,
@@ -301,7 +300,7 @@ class Analyzer(object):
                                           fitshape=(7,7),
                                           sigma=sigma,
                                           fitter=fitter,
-                                          niters=3, aperture_radius=6)
+                                          niters=3, aperture_radius=6)"""
 
         phot_table = photometry(data)
 

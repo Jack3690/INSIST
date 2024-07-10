@@ -6,9 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 
 from photutils.detection import DAOStarFinder
-from photutils.psf import IterativePSFPhotometry, FittableImageModel
-from photutils.background import MMMBackground
-from photutils.background import Background2D
+from photutils.psf import IterativePSFPhotometry, FittableImageModel, SourceGrouper
+from photutils.background import Background2D, LocalBackground, MMMBackground
 from photutils.aperture import aperture_photometry
 from photutils.aperture import CircularAperture, CircularAnnulus, ApertureStats
 

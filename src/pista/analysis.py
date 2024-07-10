@@ -287,11 +287,11 @@ class Analyzer(object):
         photometry = IterativePSFPhotometry(finder=daofind, grouper=grouper,
                                   localbkg_estimator=localbkg_estimator,
                                   psf_model=psf_model,fitter=fitter,
-                                  maxiters=1, fit_shape=(11,11),
+                                  maxiters=1, fit_shape=(7,7),
                                   aperture_radius=3*fwhm,
                                   sub_shape=self.psf.shape,
-                                  progress_bar=True) """
-
+                                  progress_bar=True)
+        """
         photometry = DAOPhotPSFPhotometry(crit_separation=3,
                                           threshold = mean + sigma*std,
                                           fwhm=2,
@@ -299,7 +299,8 @@ class Analyzer(object):
                                           fitshape=(7,7),
                                           sigma=sigma,
                                           fitter=fitter,
-                                          niters=3, aperture_radius=6)"""
+                                          niters=3, aperture_radius=6)
+        """
 
         phot_table = photometry(data)
 

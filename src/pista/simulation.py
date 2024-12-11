@@ -287,7 +287,7 @@ class Imager(Analyzer):
         coords = np.array([df['ra'], df['dec']])
         pix = np.array(wcs.world_to_array_index_values(coords.T))
         if len(df)<2:
-          raise print("Input DataFrame must have atleast 2 sources")
+          raise Exception("Input DataFrame must have atleast 2 sources")
 
         df['x'] = np.flip(pix[:, 0])
         df['y'] = np.flip(pix[:, 1])

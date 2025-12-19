@@ -529,8 +529,8 @@ class Imager(Analyzer):
                     self.DNFP_array = arr
                 self.DC_array += self.DNFP_array
       else:
-          self.DR = 0
-          self.DC_array = 0
+          self.DR = np.zeros((n_x, n_y))
+          self.DC_array = np.zeros((n_x, n_y))
 
     def dark_current(self, T, DFM, pixel_area):
         """

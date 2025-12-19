@@ -11,7 +11,7 @@ setup(
         package_dir={'': 'src'},
         packages=find_packages(where='src'),
         install_requires=['pandas', 'matplotlib', 'astropy', 'photutils',
-                          'numpy==1.23.4', 'seaborn', 'opencv-python', 'reproject',
+                          'numpy', 'seaborn', 'opencv-python', 'reproject',
                           'torch', 'scipy','tqdm'],
         include_package_data=True,
         package_data={'': ['pista/data/*']},

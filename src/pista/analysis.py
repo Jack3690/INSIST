@@ -367,18 +367,16 @@ class Analyzer(object):
         figsize = figsize[0]*scale, figsize[1]
 
         # Cropping Dataframe based on FoV
-        left = (self.n_x_sim - self.n_x)//2
-        right = left + self.n_x
+        left  = self.n_pix_psf 
+        right = left + self.n_x_sim 
 
         df = self.sim_df
 
         x_min_cut = (df['x'] > left)
         x_max_cut = (df['x'] < right)
 
-        df = df[x_min_cut & x_max_cut]
-
-        bottom = (self.n_y_sim - self.n_y)//2
-        top = bottom + self.n_y
+        bottom = self.n_pix_psf
+        top = bottom + self.n_y_sim 
 
         y_min_cut = (df['y'] > bottom)
         y_max_cut = (df['y'] < top)
@@ -388,8 +386,6 @@ class Analyzer(object):
 
         fov_x = np.round(fov_x, 4)
         fov_y = np.round(fov_y, 4)
-
-        df = df[y_min_cut & y_max_cut]
 
         fig, ax = plt.subplots(1, 1, figsize=figsize)
 

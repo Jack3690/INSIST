@@ -33,11 +33,12 @@ Telescope parameters
   tel_params = {
                   'aperture'       : 100,
                   'pixel_scale'    : 0.1,
-                  'psf_file'       : f'{data_path}/data/PSF/INSIST/off_axis_poppy.npy',
+                  'psf_file'       : f'{data_path}/data/PSF/INSIST/on_axis_poppy.npy',
                   'response_funcs' :  [ f'{data_path}/data/INSIST/UV/Filter.dat,1,100',    
                                         f'{data_path}/data/INSIST/UV/Coating.dat,5,100',   # 5 mirrors
                                         f'{data_path}/data/INSIST/UV/Dichroic.dat,2,100',  # 2 dichroics
-                                      ],                                
+                                      ], 
+                  'coeffs'          : 0.87
                 } 
 
 Initialize Imager object

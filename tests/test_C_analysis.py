@@ -40,6 +40,7 @@ def test_Analyzer(init_Imager):
     an.det_params = sim.det_params
     an.gain = sim.gain
     an.DC_array = sim.DC_array
+    an.n_pix_psf = sim.n_pix_psf 
 
     df = sim.df
     wcs = sim.wcs
@@ -61,6 +62,7 @@ def test_plotting(init_Imager):
     an.det_params = sim.det_params
     an.gain = sim.gain
     an.DC_array = sim.DC_array
+    an.n_pix_psf = sim.n_pix_psf 
 
     df = sim.df
     wcs = sim.wcs

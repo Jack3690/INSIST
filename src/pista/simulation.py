@@ -598,8 +598,8 @@ class Imager(Analyzer):
 
         image = image[patch_width-1:-patch_width+1,
                       patch_width-1:-patch_width+1]
-        image = image.reshape(self.n_x, self.psf_oversamp, self.n_y, 
-                               self.psf_oversamp)
+        image = image.reshape(self.n_y, self.psf_oversamp, 
+                              self.n_x, self.psf_oversamp)
         
         image = image.sum(axis=(1, 3))
 

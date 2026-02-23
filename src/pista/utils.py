@@ -92,17 +92,17 @@ def bandpass(wav, flux, inputs, plot=True, fig=None, ax=None):
 
     # Wavelength units
     conv_flux = R_eff*flux_AB
-    int_flux = np.trapz(lambda_*conv_flux, lambda_)/np.trapz(lambda_*R_eff,
+    int_flux = np.trapezoid(lambda_*conv_flux, lambda_)/np.trapezoid(lambda_*R_eff,
                                                              lambda_)
-    W_eff = np.trapz(R_eff, lambda_)/R_eff.max()
-    lambda_phot = np.trapz(lambda_**2*conv_flux,
-                           lambda_)/np.trapz(lambda_*conv_flux, lambda_)
+    W_eff = np.trapezoid(R_eff, lambda_)/R_eff.max()
+    lambda_phot = np.trapezoid(lambda_**2*conv_flux,
+                           lambda_)/np.trapezoid(lambda_*conv_flux, lambda_)
 
     c1 = lambda_ >= lambda_phot-W_eff/2
     c2 = lambda_ <= lambda_phot+W_eff/2
 
     R_sq = np.where((c1 & c2), 1, 0)
-    flux_ratio = np.trapz(R_eff, lambda_)/np.trapz(R_sq, lambda_)
+    flux_ratio = np.trapezoid(R_eff, lambda_)/np.trapezoid(R_sq, lambda_)
 
     if plot:
         ax.plot(lambda_, R_sq,
@@ -114,7 +114,7 @@ def bandpass(wav, flux, inputs, plot=True, fig=None, ax=None):
     nu = 3e18/lambda_
 
     conv_flux_Jy = R_eff_Jy*flux_AB
-    int_flux_Jy = np.trapz(nu*conv_flux_Jy, nu)/np.trapz(nu*R_eff_Jy, nu)
+    int_flux_Jy = np.trapezoid(nu*conv_flux_Jy, nu)/np.trapezoid(nu*R_eff_Jy, nu)
 
     # Comparing to a square filter with same width
 

@@ -21,7 +21,6 @@ from .analysis import Analyzer, SpecAnalyzer
 
 data_path = Path(__file__).parent.joinpath('data')
 
-
 class Imager(Analyzer):
     """Imager class uses dataframe containing position and magntidue
     information to simulate image based on user defined telescope
@@ -83,11 +82,12 @@ class Imager(Analyzer):
         self.tel_params = {'aperture': 100,  # cm
                            'pixel_scale': 0.1,
                            'psf_file': psf_file,
+                           'psf_oversamp': 10,
                            'response_funcs': [],
                            'sky_resp': sky_resp,
                            'coeffs': 1,
                            'theta': 0,
-                           'M_sky': 27,
+                           'M_sky': 27
                            }
 
         self.user_profiles = {
@@ -127,6 +127,7 @@ class Imager(Analyzer):
         self.df = df.copy()
         self.n_x = n_x
         self.n_y = n_y
+        self.psf_oversamp = int(self.tel_params['psf_oversamp'])
         self.pixel_scale = self.tel_params['pixel_scale']
         self.theta = self.tel_params['theta']*np.pi/180
 
@@ -157,44 +158,7 @@ class Imager(Analyzer):
         self.name = f" RA : {ra_n} degrees, Dec : {dec_n} degrees"
 
         self.generate_sim_field(plot)
-
-    def generate_sim_field(self, plot):
-        """This function creates array with FoV a bit wider
-        than user defined size for flux conservation"""
-        if self.df is not None:
-            self.calc_zp(plot=plot)
-            self.init_psf_patch()
-
-            # Cropping df to sim_field
-            x_left = self.n_pix_psf//2
-            x_right = self.n_x_sim - self.n_pix_psf//2
-            y_left = self.n_pix_psf//2
-            y_right = self.n_y_sim - self.n_pix_psf//2
-
-            self.sim_df = self.init_df(df=self.df,
-                                       n_x=self.n_x_sim, n_y=self.n_y_sim,
-                                       x_left=x_left, x_right=x_right,
-                                       y_left=y_left, y_right=y_right)
-            if len(self.sim_df) < 1:
-                print("Not Enough sources inside FoV. Increase n_x\
-                                and n_y")
-        else:
-            print("df cannot be None")
-
-    def check_df(self):
-        # Input Dataframe
-        if 'mag' not in self.df.keys():
-            raise Exception("'mag' column not found input dataframe")
-
-        if 'ra' not in self.df or 'dec' not in self.df.keys():
-            if 'x' in self.df.keys() and 'y' in self.df.keys():
-                print("Converting xy to ra-dec")
-                self.df = self.xy_to_radec(self.df, self.n_x, self.n_y,
-                                           self.pixel_scale)
-            else:
-                raise Exception("'ra','dec','x',or 'y', \
-                 columns not found in input dataframe ")
-
+    
     def calc_zp(self, plot=False):
         if len(self.response_funcs) > 0:
             wav = np.linspace(1000, 10000, 10000)
@@ -252,7 +216,7 @@ class Imager(Analyzer):
                 self.sky_photons = self.compute_shot_noise(self.sky_bag_flux)
         else:
             self.sky_photons = 0
-
+            
     def init_psf_patch(self, return_psf=False):
         """Creates PSF array from NPY or fits files"""
         ext = self.psf_file.split('.')[-1]
@@ -273,21 +237,60 @@ class Imager(Analyzer):
         self.n_pix_psf = self.psf.shape[0]
 
         # Defining shape of simulation field
-        self.n_x_sim = self.n_x + 2*(self.n_pix_psf-1)
-        self.n_y_sim = self.n_y + 2*(self.n_pix_psf-1)
+        self.n_x_sim = self.psf_oversamp*self.n_x + 2*(self.n_pix_psf-1)
+        self.n_y_sim = self.psf_oversamp*self.n_y + 2*(self.n_pix_psf-1)
 
         if return_psf:
             return image*self.zero_flux
 
+    def generate_sim_field(self, plot):
+        """This function creates array with FoV a bit wider
+        than user defined size for flux conservation"""
+        if self.df is not None:
+            self.calc_zp(plot=plot)
+            self.init_psf_patch()
+
+            # Cropping df to sim_field
+            x_left = self.n_pix_psf//2
+            x_right = self.n_x_sim - self.n_pix_psf//2
+            y_left = self.n_pix_psf//2
+            y_right = self.n_y_sim - self.n_pix_psf//2
+
+            self.sim_df = self.init_df(df=self.df,
+                                       n_x=self.n_x_sim, n_y=self.n_y_sim,
+                                       x_left=x_left, x_right=x_right,
+                                       y_left=y_left, y_right=y_right)
+            if len(self.sim_df) < 1:
+                print("Not Enough sources inside FoV. Increase n_x\
+                                and n_y")
+        else:
+            print("df cannot be None")
+
+    def check_df(self):
+        # Input Dataframe
+        if 'mag' not in self.df.keys():
+            raise Exception("'mag' column not found input dataframe")
+
+        if 'ra' not in self.df or 'dec' not in self.df.keys():
+            if 'x' in self.df.keys() and 'y' in self.df.keys():
+                print("Converting xy to ra-dec")
+                self.df = self.xy_to_radec(self.df, self.n_x, self.n_y,
+                                           self.pixel_scale)
+            else:
+                raise Exception("'ra','dec','x',or 'y', \
+                 columns not found in input dataframe ")
+
+
     def init_df(self, df, n_x, n_y, x_left, x_right, y_left, y_right):
         """Bounds sources to boundary defined by x and y limits"""
         wcs = self.create_wcs(n_x, n_y, self.ra, self.dec,
-                              self.pixel_scale, self.theta)
+                              self.pixel_scale/self.psf_oversamp,
+                              self.theta)
 
         coords = np.array([df['ra'], df['dec']])
         pix = np.array(wcs.world_to_array_index_values(coords.T))
         if len(df)<2:
-          raise Exception("Input DataFrame must have atleast 2 sources")
+          raise print("Input DataFrame must have atleast 2 sources")
 
         df['x'] = np.flip(pix[:, 0])
         df['y'] = np.flip(pix[:, 1])
@@ -364,7 +367,7 @@ class Imager(Analyzer):
         """
         w = WCS(naxis=2)
         w.wcs.crpix = [n_x//2, n_y//2]
-        w.wcs.cdelt = np.array([-pixel_scale/3600, self.pixel_scale/3600])
+        w.wcs.cdelt = np.array([-pixel_scale/3600, pixel_scale/3600])
         w.wcs.crval = [ra, dec]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
         w.wcs.pc = np.array([[np.cos(theta), -np.sin(theta)],
@@ -415,23 +418,24 @@ class Imager(Analyzer):
 
          # Quantum Efficiency
         if self.QE:
-            if self.det_params['qe_mean'] is None and len(self.det_params['qe_response'])>2:
-                if os.path.exists(self.det_params['qe_response']):
-                    wav = np.linspace(1000, 10000, 10000)
-                    flux = 3631/(3.34e4*wav**2)   # AB flux
+          if self.det_params['qe_mean'] is None and \
+              len(self.det_params['qe_response'])>2:
+            if os.path.exists(self.det_params['qe_response']):
+                wav = np.linspace(1000, 10000, 10000)
+                flux = 3631/(3.34e4*wav**2)   # AB flux
 
-                    resp = f"{self.det_params['qe_response']},1,100"
+                resp = f"{self.det_params['qe_response']},1,100"
 
-                    _, _, _, params = bandpass(wav, flux,
-                                                [resp],
-                                                plot=False)
+                _, _, _, params = bandpass(wav, flux,
+                                            [resp],
+                                            plot=False)
 
-                    _, _, _, _, flux_ratio = params
-                    self.det_params['qe_mean'] = flux_ratio
-                else:
-                    raise Exception("Path does not exists!")
+                _, _, _, _, flux_ratio = params
+                self.det_params['qe_mean'] = flux_ratio
             else:
-                self.det_params['qe_mean'] = 1
+              raise Exception("Path does not exists!")
+          else:
+            self.det_params['qe_mean'] = 1
         else:
           self.det_params['qe_mean'] = 1
 
@@ -529,8 +533,8 @@ class Imager(Analyzer):
                     self.DNFP_array = arr
                 self.DC_array += self.DNFP_array
       else:
-          self.DR = np.zeros((n_x, n_y))
-          self.DC_array = np.zeros((n_x, n_y))
+          self.DR = 0
+          self.DC_array = 0
 
     def dark_current(self, T, DFM, pixel_area):
         """
@@ -594,6 +598,10 @@ class Imager(Analyzer):
 
         image = image[patch_width-1:-patch_width+1,
                       patch_width-1:-patch_width+1]
+        image = image.reshape(self.n_x, self.psf_oversamp, self.n_y, 
+                               self.psf_oversamp)
+        
+        image = image.sum(axis=(1, 3))
 
         return image
 
@@ -793,8 +801,8 @@ class Imager(Analyzer):
                          detect_sources=detect_sources, ZP=ZP)
 
     def add_stars(self, image_array, zero_flux, df):
-        x_size = image_array.shape[1]
-        y_size = image_array.shape[0]
+        x_size = image_array.shape[0]
+        y_size = image_array.shape[1]
 
         patch_width = self.n_pix_psf
         if self.n_x == x_size and self.n_y == y_size:
@@ -809,10 +817,8 @@ class Imager(Analyzer):
                 type_ = self.det_params['shot_noise']
                 source_photons = self.compute_shot_noise(source_photons,
                                                          type_=type_)
-        else:
-         print(f"Expected shape: ({self.n_x}, {self.n_y}).\n Provided shape: ({x_size}, {y_size})")
 
-        return source_photons + image_array
+          return source_photons + image_array
 
     def add_distortion(self, xmap, ymap):
         """Function for addition distortion using

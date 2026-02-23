@@ -82,7 +82,7 @@ class Imager(Analyzer):
         self.tel_params = {'aperture': 100,  # cm
                            'pixel_scale': 0.1,
                            'psf_file': psf_file,
-                           'psf_oversamp': 10,
+                           'psf_oversamp': 1,
                            'response_funcs': [],
                            'sky_resp': sky_resp,
                            'coeffs': 1,

@@ -10,9 +10,6 @@ setup(
         license='BSD 2-clause',
         package_dir={'': 'src'},
         packages=find_packages(where='src'),
-        install_requires=['pandas', 'matplotlib', 'astropy', 'photutils',
-                          'numpy', 'seaborn', 'opencv-python', 'reproject',
-                          'torch', 'scipy','tqdm'],
         include_package_data=True,
         package_data={'': ['pista/data/*']},
         classifiers=[

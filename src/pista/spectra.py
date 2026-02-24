@@ -295,7 +295,7 @@ class Spectrograph(Imager, Analyzer, SpecAnalyzer):
 
         return np.array(binned_y)
 
-    def generate_photons(self, image, patch_width, df):
+    def generate_photons(self, image, patch_width, df, zero_flux):
         """
         This function creates sims based on ABmag  on a
         small patch (2D array) of size n_pix_s*n_pix_s.

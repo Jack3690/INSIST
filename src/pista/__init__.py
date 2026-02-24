@@ -2,7 +2,8 @@ __version__ = "2.0.0"
 __author__ = 'Avinash CK'
 __credits__ = 'Indian Institute of Astrophysics'
 
-from .simulation import Imager, Mosaic
+from .imaging import Imager, Mosaic
+from .spectra import Spectrograph
 from .analysis import Analyzer, SpecAnalyzer
 from pathlib import Path
 

@@ -1,7 +1,7 @@
-simulation module
+imaging module
 -----------------------
 
-.. automodule:: pista.simulation
+.. automodule:: pista.imaging
    :members:
    :undoc-members:
    :show-inheritance:

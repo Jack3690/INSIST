@@ -6,7 +6,7 @@ from pathlib import Path
 from astropy.wcs import WCS
 from astropy.io import fits
 from tqdm.contrib import tzip
-from .analysis import SpecAnalyzer
+from .analysis import SpecAnalyzer, Analyzer
 from .utils import bandpass, redshift_corr, select_mos, calc_mos_size
 
 data_path = Path(__file__).parent.joinpath('data')

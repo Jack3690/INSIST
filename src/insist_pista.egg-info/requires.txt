@@ -6,6 +6,8 @@ numpy
 seaborn
 opencv-python
 reproject
-torch
 scipy
 tqdm
+
+[torch]
+torch

@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: insist-pista
 Version: 2.0.0
 Summary: Python Image Simulation and Testing Application
@@ -13,7 +13,26 @@ Classifier: Operating System :: OS Independent
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
+Requires-Python: >=3.10
 Description-Content-Type: text/markdown
+Requires-Dist: pandas
+Requires-Dist: matplotlib
+Requires-Dist: astropy
+Requires-Dist: photutils
+Requires-Dist: numpy
+Requires-Dist: seaborn
+Requires-Dist: opencv-python
+Requires-Dist: reproject
+Requires-Dist: scipy
+Requires-Dist: tqdm
+Provides-Extra: torch
+Requires-Dist: torch; extra == "torch"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: home-page
+Dynamic: license
+Dynamic: summary
 
 # Indian Spectroscopic and Imaging Space Telescope [![Documentation Status](https://readthedocs.org/projects/insist/badge/?version=latest)](https://insist.readthedocs.io/en/latest/?badge=latest)[![PyPI - Python Version](https://img.shields.io/pypi/v/insist-pista.svg)](https://pypi.org/project/insist-pista/) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/insist-pista)](https://pypi.org/project/insist-pista/)  ![PyPI - Downloads](https://img.shields.io/pypi/dm/insist-pista)
 

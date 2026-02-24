@@ -5,10 +5,11 @@ import numpy as np
 from pathlib import Path
 from astropy.wcs import WCS
 from astropy.io import fits
+from astropy.table import vstack
 from tqdm.contrib import tzip
 from .analysis import SpecAnalyzer, Analyzer
 from .utils import bandpass, redshift_corr, select_mos, calc_mos_size
-
+from .imaging import Imager
 data_path = Path(__file__).parent.joinpath('data')
 
 class Spectrograph(Imager, Analyzer, SpecAnalyzer):

@@ -173,8 +173,6 @@ def generate_psf(npix, params, function='Gaussian'):
         psf = models.Moffat2D(1, npix//2, npix//2,
                               gamma, alpha)(xx, yy)
         psf /= psf.sum()
-
-    np.save('user_defined_psf.npy', psf)
     return psf
 
 

@@ -14,6 +14,7 @@ import os
 from reproject import reproject_interp
 from reproject.mosaicking import reproject_and_coadd
 from reproject.mosaicking import find_optimal_celestial_wcs
+from scipy.signal import fftconvolve
 from .utils import bandpass
 from .analysis import Analyzer
 
@@ -63,6 +64,7 @@ class Imager(Analyzer):
         self.DNFP = True
         self.QN = True
         self.Bias = True
+        self.convolve = False
 
         # Detector
         self.Cal0 = False
@@ -156,23 +158,8 @@ class Imager(Analyzer):
         self.name = f" RA : {ra_n} degrees, Dec : {dec_n} degrees"
 
         self.generate_sim_field(plot)
-    
+
     def calc_zp(self, plot=False):
-        """
-        Compute zero point and related photometric parameters.
-
-        This method evaluates the instrument response using provided
-        response functions (if available) and calculates quantities such
-        as effective wavelength, integrated flux, sky background in
-        photons, and zero flux for the configured exposure time and
-        telescope area.  It also generates the sky photon map taking into
-        account user‑supplied sky profile or shot noise.
-
-        Parameters
-        ----------
-        plot : bool, optional
-            If True, the bandpass response is plotted. Default is False.
-        """
         if len(self.response_funcs) > 0:
             wav = np.linspace(1000, 10000, 10000)
             flux = 3631/(3.34e4*wav**2)   # AB flux
@@ -229,7 +216,7 @@ class Imager(Analyzer):
                 self.sky_photons = self.compute_shot_noise(self.sky_bag_flux)
         else:
             self.sky_photons = 0
-            
+
     def init_psf_patch(self, return_psf=False):
         """Creates PSF array from NPY or fits files"""
         ext = self.psf_file.split('.')[-1]
@@ -264,9 +251,9 @@ class Imager(Analyzer):
             self.init_psf_patch()
 
             # Cropping df to sim_field
-            x_left = self.n_pix_psf//2
+            x_left  = self.n_pix_psf//2
             x_right = self.n_x_sim - self.n_pix_psf//2
-            y_left = self.n_pix_psf//2
+            y_left  = self.n_pix_psf//2
             y_right = self.n_y_sim - self.n_pix_psf//2
 
             self.sim_df = self.init_df(df=self.df,
@@ -280,15 +267,6 @@ class Imager(Analyzer):
             print("df cannot be None")
 
     def check_df(self):
-        """
-        Validate the input dataframe and ensure required columns exist.
-
-        Checks that ``mag`` is present.  If ``ra``/``dec`` are missing but
-        ``x``/``y`` exist, it converts the latter to sky coordinates using
-        ``xy_to_radec``.  Raises an exception if neither coordinate set is
-        available.
-
-        """
         # Input Dataframe
         if 'mag' not in self.df.keys():
             raise Exception("'mag' column not found input dataframe")
@@ -353,30 +331,6 @@ class Imager(Analyzer):
         return image, wcs
 
     def xy_to_radec(self, df, n_x, n_y, pixel_scale):
-        """
-        Convert pixel coordinates in a dataframe to RA/Dec.
-
-        A simple TAN WCS is created centering on an arbitrary reference
-        value and the provided ``x``/``y`` columns are converted to
-        ``ra``/``dec`` in degrees.  The input dataframe is modified in-place
-        and returned.
-
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            Dataframe containing ``x`` and ``y`` columns.
-        n_x : int
-            Number of pixels in the x (RA) direction.
-        n_y : int
-            Number of pixels in the y (Dec) direction.
-        pixel_scale : float
-            Pixel scale in arcseconds/pixel.
-
-        Returns
-        -------
-        pandas.DataFrame
-            The same dataframe with ``ra`` and ``dec`` columns added.
-        """
 
         w = WCS(naxis=2)
         w.wcs.crpix = [n_x//2, n_y//2]
@@ -532,19 +486,9 @@ class Imager(Analyzer):
         else:
             self.QN_array = 0
     def compute_DC(self):
-        """
-        Compute dark current related arrays.
-
-        Depending on user flags and profiles, this method populates
-        ``self.DR`` (dark current rate), ``self.DC_array`` (shot-noise
-        applied dark current), ``self.DCNU_array`` (non-uniformity), and
-        ``self.DNFP_array`` (fixed pattern).  It uses detector parameters
-        and optionally temperature maps provided by the user.
-
-        """
-        n_x = self.n_y
-        n_y = self.n_x
-        if self.DC:
+      n_x = self.n_y
+      n_y = self.n_x
+      if self.DC:
             if self.user_profiles['DC'] is not None:
                 if self.user_profiles['DC'].shape == (n_x, n_y):
                     self.DR = self.user_profiles['DC']
@@ -588,9 +532,9 @@ class Imager(Analyzer):
                     arr = self.compute_shot_noise(self.det_params['DNFP'])
                     self.DNFP_array = arr
                 self.DC_array += self.DNFP_array
-        else:
-            self.DR = 0
-            self.DC_array = 0
+      else:
+          self.DR = 0
+          self.DC_array = 0
 
     def dark_current(self, T, DFM, pixel_area):
         """
@@ -638,47 +582,38 @@ class Imager(Analyzer):
 
         """
         patch_width_mid = patch_width//2
+        ABmag  = df['mag'].values
+        df['flux']   = zero_flux* 10**(-ABmag/2.5)
+        df = df.groupby(["x", "y"], as_index=False)["flux"].sum()
 
-        x0, y0 = df['x'].astype(int), df['y'].astype(int)
-        ABmag = df['mag'].values
-        flux = zero_flux* 10**(-ABmag/2.5)
-        patch = self.psf
+        x0, y0, flux = df['x'].astype(int), df['y'].astype(int),  df['flux'] 
+         
+        patch  = self.psf
 
-        x1 = x0 - patch_width_mid
-        x2 = x1 + patch_width
-        y1 = y0 - patch_width_mid
-        y2 = y1 + patch_width
+        if len(x0)>=10000 or self.convolve:
 
-        for x1_, x2_, y1_, y2_, flux_ in tzip(x1, x2, y1, y2, flux):
-            image[y1_:y2_, x1_:x2_] += flux_*patch
+          image[x0, y0] += flux
+          image = fftconvolve(image, patch, mode='same')
+          
+        else:
+          x1 = x0 - patch_width_mid
+          x2 = x1 + patch_width
+          y1 = y0 - patch_width_mid
+          y2 = y1 + patch_width
 
+          for x1_, x2_, y1_, y2_, flux_ in tzip(x1, x2, y1, y2, flux):
+              image[y1_:y2_, x1_:x2_] += flux_*patch
+          
         image = image[patch_width-1:-patch_width+1,
                       patch_width-1:-patch_width+1]
-        image = image.reshape(self.n_y, self.psf_oversamp, 
-                              self.n_x, self.psf_oversamp)
-        
+        image = image.reshape(self.n_y, self.psf_oversamp, self.n_x,
+                               self.psf_oversamp)
+
         image = image.sum(axis=(1, 3))
 
         return image
 
     def make_ccd_image(self, light_array):
-        """
-        Convert a light array (photoelectrons) into a simulated CCD image.
-
-        Applies QE, PRNU, dark current, quantization noise, bias and
-        converts electrons to digital counts (ADU).  Values are clipped to
-        the detector's bit depth.
-
-        Parameters
-        ----------
-        light_array : numpy.ndarray
-            Array of incoming photoelectrons for each pixel.
-
-        Returns
-        -------
-        numpy.ndarray
-            Image in ADU units.
-        """
 
         # QE pixel to pixel variation | Source photoelectrons
         self.source_photoelec = light_array*self.det_params['qe_mean']
@@ -874,28 +809,6 @@ class Imager(Analyzer):
                          detect_sources=detect_sources, ZP=ZP)
 
     def add_stars(self, image_array, zero_flux, df):
-        """
-        Add a population of stars to an existing image array.
-
-        A temporary simulation is produced from ``df`` and ``zero_flux`` and
-        optionally shot noise is applied, then it is added pixelwise to the
-        provided ``image_array``.  Only works if ``image_array`` matches the
-        configured detector size.
-
-        Parameters
-        ----------
-        image_array : numpy.ndarray
-            Existing image to which star flux will be added.
-        zero_flux : float
-            Flux normalization for zero-magnitude source.
-        df : pandas.DataFrame
-            Catalog of sources with ``x``, ``y``, ``mag`` columns.
-
-        Returns
-        -------
-        numpy.ndarray or None
-            Combined image, or ``None`` if the input size did not match.
-        """
         x_size = image_array.shape[0]
         y_size = image_array.shape[1]
 
@@ -934,10 +847,8 @@ class Imager(Analyzer):
         self.digital = self.org_digital
 
     def __del__(self):
-        """Cleanup all attributes when the object is destroyed."""
-        for i in self.__dict__:
-            del i
-
+      for i in self.__dict__:
+        del i
 
 class Mosaic(Imager):
     """

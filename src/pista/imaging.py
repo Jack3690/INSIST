@@ -186,7 +186,7 @@ class Imager(Analyzer):
             flux = filt_dat[:, 1]
 
             _, _, _, params = bandpass(wav, flux, self.response_funcs,
-                                       plot=False)
+                                       plot=plot)
 
             int_flux = params[1]
             self.det_params['M_sky'] = int_flux

@@ -88,7 +88,7 @@ class Imager(Analyzer):
                            'coeffs': 1,
                            'theta': 0,
                            'M_sky': 27,
-                           'wav_min' :5000,
+                           'wav_min' :1000,
                            'wav_max' :20000,
                            }
 

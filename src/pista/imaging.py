@@ -26,7 +26,7 @@ class Imager(Analyzer):
     and detector characteristics
     """
     def __init__(self, df, coords=None, tel_params=None, n_x=1000,
-                 n_y=1000, exp_time=100, plot=False, user_profiles=None):
+                 n_y=1000, exp_time=100, plot_bandpass=False, user_profiles=None):
         """
         Parameters
         ----------
@@ -87,7 +87,9 @@ class Imager(Analyzer):
                            'sky_resp': sky_resp,
                            'coeffs': 1,
                            'theta': 0,
-                           'M_sky': 27
+                           'M_sky': 27,
+                           'wav_min' :5000,
+                           'wav_max' :20000,
                            }
 
         self.user_profiles = {
@@ -157,11 +159,13 @@ class Imager(Analyzer):
         dec_n = np.round(self.dec, 3)
         self.name = f" RA : {ra_n} degrees, Dec : {dec_n} degrees"
 
-        self.generate_sim_field(plot)
+        self.generate_sim_field(plot_bandpass)
 
     def calc_zp(self, plot=False):
         if len(self.response_funcs) > 0:
-            wav = np.linspace(1000, 10000, 10000)
+            wav = np.linspace(self.tel_params['wav_min'], 
+                              self.tel_params['wav_max'], 
+                              10000)
             flux = 3631/(3.34e4*wav**2)   # AB flux
 
 

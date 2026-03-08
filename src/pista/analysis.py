@@ -51,13 +51,15 @@ class Analyzer(object):
         self.photometry_type = photometry
         if photometry == 'Aper':
             print("Running Aperture Photometry using Photutils")
-            self.aper_photometry(data, wcs, df, fwhm, sigma, detect_sources,
-                                 ZP)
+            self.aper_photometry(data, wcs, df, fwhm, sigma, ZP,
+                                 detect_sources)
         elif photometry == 'PSF':
             print("Running PSF Photometry using Photutils")
-            self.psf_photometry(data, wcs, df, fwhm, sigma, ZP)
+             data, wcs, df, fwhm, sigma, ZP, detect_source=True
+            self.psf_photometry(data, wcs, df, fwhm, sigma, ZP,
+                                detect_source)
 
-    def aper_photometry(self, data, wcs, df, fwhm, sigma, detect, ZP):
+    def aper_photometry(self, data, wcs, df, fwhm, sigma, ZP,detect):
       """
       Function to perform Aperture photometry
 

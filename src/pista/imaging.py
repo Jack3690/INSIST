@@ -272,8 +272,12 @@ class Imager(Analyzer):
             y_left  = self.n_pix_psf//2
             y_right = self.n_y_sim - self.n_pix_psf//2
 
+            wcs = self.create_wcs(n_x, n_y, self.ra, self.dec,
+                      self.pixel_scale/self.psf_oversamp,
+                      self.theta)
+
             self.sim_df = self.init_df(df=self.df,
-                                       n_x=self.n_x_sim, n_y=self.n_y_sim,
+                                       wcs=wcs,
                                        x_left=x_left, x_right=x_right,
                                        y_left=y_left, y_right=y_right)
             if len(self.sim_df) < 1:
@@ -297,12 +301,9 @@ class Imager(Analyzer):
                  columns not found in input dataframe ")
 
 
-    def init_df(self, df, n_x, n_y, x_left, x_right, y_left, y_right):
+    def init_df(self, df, wcs, x_left, x_right, y_left, y_right):
         """Bounds sources to boundary defined by x and y limits"""
-        wcs = self.create_wcs(n_x, n_y, self.ra, self.dec,
-                              self.pixel_scale/self.psf_oversamp,
-                              self.theta)
-
+        
         coords = np.array([df['ra'], df['dec']])
         pix = np.array(wcs.world_to_array_index_values(coords.T))
         if len(df)<2:
@@ -340,11 +341,8 @@ class Imager(Analyzer):
 
         """
         image = np.zeros((self.n_y_sim, self.n_x_sim))
-        wcs = self.create_wcs(self.n_x_sim, self.n_y_sim,
-                                   self.ra, self.dec, self.pixel_scale,
-                                   self.theta)
 
-        return image, wcs
+        return image
 
     def xy_to_radec(self, df, n_x, n_y, pixel_scale):
 
@@ -793,11 +791,6 @@ class Imager(Analyzer):
                           'FWC'        :  float,       electrons
                           'C_ray_r'    :  float        hits/second
                       }
-          n_stack    : int, optional
-                      Number of observations to be stacked. The default is 1.
-
-          stack_type : str, optional
-                      Stacking method. The default is 'median'.
           photometry : str,
                         Type of photometry to be employed
                         Choose from
@@ -839,9 +832,9 @@ class Imager(Analyzer):
 
             self.gain = B/A
 
-            self.gain /= self.det_params['G1']
+            self.gain *= self.det_params['G1']
 
-        image, _ = self.init_image_array()
+        image = self.init_image_array()
 
         # Source photons
         print("Generating stars...")
@@ -875,7 +868,7 @@ class Imager(Analyzer):
         y_right = self.n_y
 
         self.img_df = self.init_df(df=self.sim_df.copy(),
-                                   n_x=self.n_x, n_y=self.n_y,
+                                   wcs = self.wcs,
                                    x_left=x_left, x_right=x_right,
                                    y_left=y_left, y_right=y_right)
 

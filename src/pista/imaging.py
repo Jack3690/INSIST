@@ -272,7 +272,9 @@ class Imager(Analyzer):
             y_left  = self.n_pix_psf//2
             y_right = self.n_y_sim - self.n_pix_psf//2
 
-            wcs = self.create_wcs(n_x, n_y, self.ra, self.dec,
+            wcs = self.create_wcs(self.n_x_sim , 
+                                  self.n_y_sim , 
+                                  self.ra, self.dec,
                       self.pixel_scale/self.psf_oversamp,
                       self.theta)
 

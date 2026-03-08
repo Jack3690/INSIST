@@ -126,7 +126,7 @@ class Imager(Analyzer):
                           'NF': 0.,               # electrons
                           'FWC': 1.4e5,           # electrons
                           'diffusion_sigma_pix' : 3, # charge diffusion kernel
-                          'ipc_alpha' : 0.01      # interpixel capacitance
+                          'ipc_alpha' : 0.01,      # interpixel capacitance
             
                           # Cosmic ray parameters
                           'cr_rate' : 5e-5,            # events / pixel / second

@@ -112,7 +112,7 @@ class Analyzer(object):
 
       # if detect flag is set to True, detect sources in the image
       if detect:
-
+          print("Running Source Detection")
           mmm_bkg = MMMBackground()
 
           sigma_clip = SigmaClip(sigma_lower=2.25, sigma_upper=2.00)
@@ -282,6 +282,7 @@ class Analyzer(object):
         # Source finder
         # -------------------------------------------------
         if detect_source:
+            print("Running Source Detection")
             finder = DAOStarFinder(
                 threshold=sigma * std,
                 fwhm=fwhm

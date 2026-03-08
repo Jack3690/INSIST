@@ -292,17 +292,19 @@ class Analyzer(object):
             init_params = Table()
             init_params['x_0'] = df['x']
             init_params['y_0'] = df['y']
+            self.psf_model.x_0.fixed = True
+            self.psf_model.y_0.fixed = True
     
         # -------------------------------------------------
         # PSF photometry object
         # -------------------------------------------------
         photometry = PSFPhotometry(
-            psf_model=psf_model,
+            psf_model=self.psf_model,
             fitter=fitter,
             finder=finder,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
-            fit_shape=(7, 7),
+            fit_shape=(11, 11),
             aperture_radius=3 * fwhm,
             progress_bar=True
         )

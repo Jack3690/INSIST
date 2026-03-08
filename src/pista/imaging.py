@@ -795,19 +795,21 @@ class Imager(Analyzer):
             zero_p_flux = self.zero_flux*QE*self.gain
             ZP = 2.5*np.log10(zero_p_flux)
             self.ZP = ZP
+        else:
+            self.ZP = ZP
 
         if self.Cal0:
           # Bias and Dark Correction
           self.digital = self.digital - self.dark_frame - self.bias_frame
           # Flat field correction
-          self.digital /= self.flat_frame
+          self.digital = self.digital.astype(np.float64)/self.flat_frame
 
           self.header['CAL_LEV']= 1
 
         self.org_digital = self.digital.astype(float).copy()
 
-
         self.header['ZP'] = self.ZP
+                     
         super().__call__(df=self.img_df, wcs=self.wcs,
                          data=self.digital.astype(float),
                          photometry=photometry, fwhm=fwhm, sigma=sigma,

@@ -635,7 +635,7 @@ class Imager(Analyzer):
     def add_cosmic_rays(self, data):
 
         ny, nx = data.shape
-        FWC = det_params['FWC']
+        FWC = self.det_params['FWC']
     
         # parameters
         rate = self.det_params.get('cr_rate', 5e-5)              # events / pixel / s

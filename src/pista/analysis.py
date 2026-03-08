@@ -56,7 +56,7 @@ class Analyzer(object):
         elif photometry == 'PSF':
             print("Running PSF Photometry using Photutils")
             self.psf_photometry(data, wcs, df, fwhm, sigma, ZP,
-                                detect_source)
+                                detect_sources)
 
     def aper_photometry(self, data, wcs, df, fwhm, sigma, ZP,detect):
       """
@@ -217,7 +217,7 @@ class Analyzer(object):
 
       self.phot_table = phot_table
 
-    def psf_photometry(self, data, wcs, df, fwhm, sigma, ZP, detect_source=True):
+    def psf_photometry(self, data, wcs, df, fwhm, sigma, ZP, detect=True):
         """
         Perform PSF photometry.
     
@@ -282,7 +282,7 @@ class Analyzer(object):
         # -------------------------------------------------
         # Source finder
         # -------------------------------------------------
-        if detect_source:
+        if detect:
             print("Running Source Detection")
             finder = DAOStarFinder(
                 threshold=sigma * std,

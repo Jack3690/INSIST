@@ -17,6 +17,7 @@ from reproject.mosaicking import find_optimal_celestial_wcs
 from scipy.signal import fftconvolve
 from .utils import bandpass
 from .analysis import Analyzer
+from scipy.ndimage import gaussian_filter
 
 data_path = Path(__file__).parent.joinpath('data')
 
@@ -56,6 +57,8 @@ class Imager(Analyzer):
 
         # Flags
         self.shot_noise = True
+        self.charge_diffusion = True
+        self.ipc = True
         self.QE = True
         self.sky = True
         self.PRNU = True
@@ -124,6 +127,8 @@ class Imager(Analyzer):
                           'NF': 0.,               # electrons
                           'FWC': 1.4e5,           # electrons
                           'C_ray_r': 2/50         # hits/second
+                          'diffusion_sigma_pix' : 3, # charge diffusion kernel
+                          'ipc_alpha' : 0.01      # interpixel capacitance
                           }
 
 
@@ -635,6 +640,20 @@ class Imager(Analyzer):
                                            + self.det_params['NF'] \
                                            + self.bias_array
 
+        if self.charge_diffusion:
+            sigma_pix = self.det_params['diffusion_sigma_pix']
+            self.charge = gaussian_filter(self.charge, sigma=sigma_pix)
+
+        if self.ipc:
+            alpha = self.det_params['ipc_alpha']
+
+            kernel = np.array([
+                [0, alpha, 0],
+                [alpha, 1-4*alpha, alpha],
+                [0, alpha, 0]
+            ])
+
+            self.charge = fftconvolve(self.charge, kernel, mode="same")
         # Photoelec to ADUs
         digital = np.round(self.charge/self.gain).astype(int)
 

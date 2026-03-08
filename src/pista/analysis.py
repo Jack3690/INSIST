@@ -253,7 +253,7 @@ class Analyzer(object):
         # -------------------------------------------------
         # PSF model
         # -------------------------------------------------
-        psf_model = ImagePSF(self.psf)
+        psf_model = ImagePSF(self.psf, oversampling=self.psf_oversamp)
         self.psf_model = psf_model
     
         # -------------------------------------------------

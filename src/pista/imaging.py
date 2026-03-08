@@ -900,10 +900,12 @@ class Imager(Analyzer):
 
         if self.Cal0:
           # Bias and Dark Correction
+          flag = self.cosmic_rays
+          self.cosmic_rays = False
           self.digital = self.digital - self.dark_frame - self.bias_frame
           # Flat field correction
           self.digital = self.digital.astype(np.float64)/self.flat_frame
-
+          self.cosmic_rays = flag  
           self.header['CAL_LEV']= 1
 
         self.org_digital = self.digital.astype(float).copy()

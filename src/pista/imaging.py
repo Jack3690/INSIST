@@ -74,6 +74,7 @@ class Imager(Analyzer):
 
         # TBD
         self.cosmic_rays = False
+        self.n_cosmic_ray_hits = 50
 
         # Telescope and Detector Parameters
         psf_file = f'{data_path}/PSF/INSIST/off_axis_hcipy.npy'
@@ -758,8 +759,8 @@ class Imager(Analyzer):
 
         if self.cosmic_rays:
             for i in range(self.n_cosmic_ray_hits):
-                x = np.random.randint(0, self.n_x_main)
-                y = np.random.randint(0, self.n_y_main)
+                x = np.random.randint(0, self.n_x)
+                y = np.random.randint(0, self.n_y)
                 self.digital[x, y] = pow(2, self.det_params['bit_res'])
 
 

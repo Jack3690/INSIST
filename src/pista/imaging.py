@@ -431,8 +431,6 @@ class Imager(Analyzer):
         """
         n_x = self.n_y
         n_y = self.n_x
-
-        self.n_cosmic_ray_hits = self.det_params['C_ray_r']*self.exp_time
         
          # Quantum Efficiency
         if self.QE:

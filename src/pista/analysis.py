@@ -215,181 +215,181 @@ class Analyzer(object):
       self.phot_table = phot_table
 
     def psf_photometry(self, data, wcs, df, fwhm, sigma, ZP, detect_source=True):
-    """
-    Perform PSF photometry.
-
-    Parameters
-    ----------
-    data : ndarray
-        Image data.
-
-    wcs : astropy.wcs.WCS
-        WCS object.
-
-    df : pandas.DataFrame
-        Input catalog.
-
-    fwhm : float
-        PSF FWHM in pixels.
-
-    sigma : float
-        Detection threshold in sigma.
-
-    ZP : float
-        Photometric zeropoint.
-
-    detect_source : bool
-        If True, detect sources using DAOStarFinder.
-        If False, use input catalog positions.
-    """
-
-    # -------------------------------------------------
-    # Image statistics
-    # -------------------------------------------------
-    mean, median, std = sigma_clipped_stats(data, sigma=3)
-
-    # -------------------------------------------------
-    # PSF model
-    # -------------------------------------------------
-    psf_model = ImagePSF(self.psf)
-    self.psf_model = psf_model
-
-    # -------------------------------------------------
-    # Background estimation
-    # -------------------------------------------------
-    sigma_clip = SigmaClip(sigma=3)
-    bkgstat = MMMBackground(sigma_clip=sigma_clip)
-
-    localbkg_estimator = LocalBackground(
-        inner_radius=15,
-        outer_radius=35,
-        bkg_estimator=bkgstat
-    )
-
-    # -------------------------------------------------
-    # Source grouping
-    # -------------------------------------------------
-    grouper = SourceGrouper(2 * fwhm)
-
-    # -------------------------------------------------
-    # Fitter
-    # -------------------------------------------------
-    fitter = LevMarLSQFitter()
-
-    # -------------------------------------------------
-    # Source finder
-    # -------------------------------------------------
-    if detect_source:
-        finder = DAOStarFinder(
-            threshold=sigma * std,
-            fwhm=fwhm
+        """
+        Perform PSF photometry.
+    
+        Parameters
+        ----------
+        data : ndarray
+            Image data.
+    
+        wcs : astropy.wcs.WCS
+            WCS object.
+    
+        df : pandas.DataFrame
+            Input catalog.
+    
+        fwhm : float
+            PSF FWHM in pixels.
+    
+        sigma : float
+            Detection threshold in sigma.
+    
+        ZP : float
+            Photometric zeropoint.
+    
+        detect_source : bool
+            If True, detect sources using DAOStarFinder.
+            If False, use input catalog positions.
+        """
+    
+        # -------------------------------------------------
+        # Image statistics
+        # -------------------------------------------------
+        mean, median, std = sigma_clipped_stats(data, sigma=3)
+    
+        # -------------------------------------------------
+        # PSF model
+        # -------------------------------------------------
+        psf_model = ImagePSF(self.psf)
+        self.psf_model = psf_model
+    
+        # -------------------------------------------------
+        # Background estimation
+        # -------------------------------------------------
+        sigma_clip = SigmaClip(sigma=3)
+        bkgstat = MMMBackground(sigma_clip=sigma_clip)
+    
+        localbkg_estimator = LocalBackground(
+            inner_radius=15,
+            outer_radius=35,
+            bkg_estimator=bkgstat
         )
-        init_params = None
-    else:
-        finder = None
-        init_params = Table()
-        init_params['x_0'] = df['x']
-        init_params['y_0'] = df['y']
-
-    # -------------------------------------------------
-    # PSF photometry object
-    # -------------------------------------------------
-    photometry = PSFPhotometry(
-        psf_model=psf_model,
-        fitter=fitter,
-        finder=finder,
-        grouper=grouper,
-        localbkg_estimator=localbkg_estimator,
-        fit_shape=(7, 7),
-        aperture_radius=3 * fwhm,
-        progress_bar=True
-    )
-
-    # -------------------------------------------------
-    # Run photometry
-    # -------------------------------------------------
-    phot_table = photometry(data, init_params=init_params)
-
-    # -------------------------------------------------
-    # Remove failed fits
-    # -------------------------------------------------
-    if 'flags' in phot_table.colnames:
-        phot_table = phot_table[phot_table['flags'] == 0]
-
-    # -------------------------------------------------
-    # Convert to sky coordinates
-    # -------------------------------------------------
-    positions = np.vstack((phot_table['x_fit'], phot_table['y_fit'])).T
-    coords = np.array(wcs.pixel_to_world_values(positions))
-
-    # -------------------------------------------------
-    # Flux calculations
-    # -------------------------------------------------
-    ap_pix = 7 * 7
-
-    phot_table['flux_fit'] = self.gain * phot_table['flux_fit'] * u.electron
-    phot_table['flux_fit_err'] = self.gain * phot_table['flux_err'] * u.electron
-
-    NE_2 = (
-        phot_table['flux_fit'].value
-        + phot_table['flux_fit_err'].value
-        + (self.DC_array.mean()
-           + self.det_params['RN']**2
-           + (self.gain / 2)**2) * ap_pix
-    )
-
-    phot_table['flux_err'] = np.sqrt(NE_2) * u.electron
-
-    # -------------------------------------------------
-    # Signal-to-noise
-    # -------------------------------------------------
-    phot_table['SNR'] = phot_table['flux_fit'] / phot_table['flux_err']
-
-    # -------------------------------------------------
-    # Magnitudes
-    # -------------------------------------------------
-    phot_table['mag_out'] = -2.5 * np.log10(phot_table['flux_fit'].value) + ZP
-    phot_table['mag_err'] = 1.082 / phot_table['SNR'].value
-
-    # -------------------------------------------------
-    # Add SkyCoord
-    # -------------------------------------------------
-    phot_table['SkyCoord'] = SkyCoord(
-        ra=coords[:, 0],
-        dec=coords[:, 1],
-        unit='deg'
-    )
-
-    # -------------------------------------------------
-    # Match with input catalog
-    # -------------------------------------------------
-    tab2 = Table.from_pandas(df)
-
-    tab2['SkyCoord'] = SkyCoord(
-        ra=df['ra'],
-        dec=df['dec'],
-        unit='deg'
-    )
-
-    min_dist = join_skycoord(2 * self.pixel_scale * u.arcsec)
-
-    phot_table = join(
-        phot_table,
-        tab2['mag', 'x', 'y', 'SkyCoord'],
-        join_funcs={'SkyCoord': min_dist}
-    )
-
-    phot_table.rename_column('mag', 'mag_in')
-
-    # -------------------------------------------------
-    # Apertures for plotting
-    # -------------------------------------------------
-    positions = np.vstack((phot_table['x_fit'], phot_table['y_fit'])).T
-    self.aps = CircularAperture(positions, r=2 * fwhm)
-
-    self.phot_table = phot_table
-
-    return phot_table
+    
+        # -------------------------------------------------
+        # Source grouping
+        # -------------------------------------------------
+        grouper = SourceGrouper(2 * fwhm)
+    
+        # -------------------------------------------------
+        # Fitter
+        # -------------------------------------------------
+        fitter = LevMarLSQFitter()
+    
+        # -------------------------------------------------
+        # Source finder
+        # -------------------------------------------------
+        if detect_source:
+            finder = DAOStarFinder(
+                threshold=sigma * std,
+                fwhm=fwhm
+            )
+            init_params = None
+        else:
+            finder = None
+            init_params = Table()
+            init_params['x_0'] = df['x']
+            init_params['y_0'] = df['y']
+    
+        # -------------------------------------------------
+        # PSF photometry object
+        # -------------------------------------------------
+        photometry = PSFPhotometry(
+            psf_model=psf_model,
+            fitter=fitter,
+            finder=finder,
+            grouper=grouper,
+            localbkg_estimator=localbkg_estimator,
+            fit_shape=(7, 7),
+            aperture_radius=3 * fwhm,
+            progress_bar=True
+        )
+    
+        # -------------------------------------------------
+        # Run photometry
+        # -------------------------------------------------
+        phot_table = photometry(data, init_params=init_params)
+    
+        # -------------------------------------------------
+        # Remove failed fits
+        # -------------------------------------------------
+        if 'flags' in phot_table.colnames:
+            phot_table = phot_table[phot_table['flags'] == 0]
+    
+        # -------------------------------------------------
+        # Convert to sky coordinates
+        # -------------------------------------------------
+        positions = np.vstack((phot_table['x_fit'], phot_table['y_fit'])).T
+        coords = np.array(wcs.pixel_to_world_values(positions))
+    
+        # -------------------------------------------------
+        # Flux calculations
+        # -------------------------------------------------
+        ap_pix = 7 * 7
+    
+        phot_table['flux_fit'] = self.gain * phot_table['flux_fit'] * u.electron
+        phot_table['flux_fit_err'] = self.gain * phot_table['flux_err'] * u.electron
+    
+        NE_2 = (
+            phot_table['flux_fit'].value
+            + phot_table['flux_fit_err'].value
+            + (self.DC_array.mean()
+               + self.det_params['RN']**2
+               + (self.gain / 2)**2) * ap_pix
+        )
+    
+        phot_table['flux_err'] = np.sqrt(NE_2) * u.electron
+    
+        # -------------------------------------------------
+        # Signal-to-noise
+        # -------------------------------------------------
+        phot_table['SNR'] = phot_table['flux_fit'] / phot_table['flux_err']
+    
+        # -------------------------------------------------
+        # Magnitudes
+        # -------------------------------------------------
+        phot_table['mag_out'] = -2.5 * np.log10(phot_table['flux_fit'].value) + ZP
+        phot_table['mag_err'] = 1.082 / phot_table['SNR'].value
+    
+        # -------------------------------------------------
+        # Add SkyCoord
+        # -------------------------------------------------
+        phot_table['SkyCoord'] = SkyCoord(
+            ra=coords[:, 0],
+            dec=coords[:, 1],
+            unit='deg'
+        )
+    
+        # -------------------------------------------------
+        # Match with input catalog
+        # -------------------------------------------------
+        tab2 = Table.from_pandas(df)
+    
+        tab2['SkyCoord'] = SkyCoord(
+            ra=df['ra'],
+            dec=df['dec'],
+            unit='deg'
+        )
+    
+        min_dist = join_skycoord(2 * self.pixel_scale * u.arcsec)
+    
+        phot_table = join(
+            phot_table,
+            tab2['mag', 'x', 'y', 'SkyCoord'],
+            join_funcs={'SkyCoord': min_dist}
+        )
+    
+        phot_table.rename_column('mag', 'mag_in')
+    
+        # -------------------------------------------------
+        # Apertures for plotting
+        # -------------------------------------------------
+        positions = np.vstack((phot_table['x_fit'], phot_table['y_fit'])).T
+        self.aps = CircularAperture(positions, r=2 * fwhm)
+    
+        self.phot_table = phot_table
+    
+        return phot_table
 
     def show_field(self, figsize=(12, 10), marker='.', cmap='jet'):
         """

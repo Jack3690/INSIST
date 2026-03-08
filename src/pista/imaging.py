@@ -737,6 +737,7 @@ class Imager(Analyzer):
         image, _ = self.init_image_array()
 
         # Source photons
+        print("Generating stars...")
         self.source_photons = self.generate_photons(image,
                                                     self.n_pix_psf,
                                                     self.sim_df,
@@ -745,6 +746,7 @@ class Imager(Analyzer):
         self.light_array = (self.source_photons + self.sky_photons)
 
         # Source shot_noise
+        print("Illuminating CCD...")
         if self.shot_noise:
             type_ = self.det_params['shot_noise']
             self.light_array = self.compute_shot_noise(self.light_array,
@@ -790,7 +792,7 @@ class Imager(Analyzer):
 
         if ZP is None:
             QE = self.det_params['qe_mean']
-            zero_p_flux = self.zero_flux*QE
+            zero_p_flux = self.zero_flux*QE*self.gain
             ZP = 2.5*np.log10(zero_p_flux)
             self.ZP = ZP
 
@@ -806,7 +808,6 @@ class Imager(Analyzer):
 
 
         self.header['ZP'] = self.ZP
-
         super().__call__(df=self.img_df, wcs=self.wcs,
                          data=self.digital.astype(float),
                          photometry=photometry, fwhm=fwhm, sigma=sigma,

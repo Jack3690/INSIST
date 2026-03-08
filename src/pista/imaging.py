@@ -77,7 +77,6 @@ class Imager(Analyzer):
 
         # TBD
         self.cosmic_rays = False
-        self.n_cosmic_ray_hits = 50
 
         # Telescope and Detector Parameters
         psf_file = f'{data_path}/PSF/INSIST/off_axis_hcipy.npy'
@@ -126,9 +125,16 @@ class Imager(Analyzer):
                           'DNFP': 0.,             # electrons
                           'NF': 0.,               # electrons
                           'FWC': 1.4e5,           # electrons
-                          'C_ray_r': 2/50         # hits/second
                           'diffusion_sigma_pix' : 3, # charge diffusion kernel
                           'ipc_alpha' : 0.01      # interpixel capacitance
+            
+                          # Cosmic ray parameters
+                          'cr_rate' : 5e-5,            # events / pixel / second
+                          'cr_energy_scale' : 0.3,     # relative to FWC
+                          'cr_track_mean' : 4,
+                          'cr_spatial_model' : 'uniform',   # uniform | gradient | radial | map
+                          'cr_gradient_x' : 0.0,
+                          'cr_gradient_y' : 0.0
                           }
 
 
@@ -426,6 +432,8 @@ class Imager(Analyzer):
         n_x = self.n_y
         n_y = self.n_x
 
+        self.n_cosmic_ray_hits = self.det_params['C_ray_r']*self.exp_time
+        
          # Quantum Efficiency
         if self.QE:
           if self.det_params['qe_mean'] is None and \
@@ -495,6 +503,7 @@ class Imager(Analyzer):
                                                             size=(n_x, n_y))
         else:
             self.QN_array = 0
+            
     def compute_DC(self):
       n_x = self.n_y
       n_y = self.n_x
@@ -622,7 +631,82 @@ class Imager(Analyzer):
         image = image.sum(axis=(1, 3))
 
         return image
+        
+    def add_cosmic_rays(self, data):
 
+        ny, nx = data.shape
+        FWC = det_params['FWC']
+    
+        # parameters
+        rate = self.det_params.get('cr_rate', 5e-5)              # events / pixel / s
+        energy_scale = self.det_params.get('cr_energy_scale',0.3)
+        mean_track = self.det_params.get('cr_track_mean',4)
+        spatial_model = self.det_params.get('cr_spatial_model','uniform')
+    
+        # ---- temporal distribution ----
+        n_events = np.random.poisson(rate * ny * nx * self.exp_time)
+    
+        # precompute density map if needed
+        if spatial_model == "gradient":
+    
+            ax = self.det_params.get('cr_gradient_x',0.0)
+            ay = self.det_params.get('cr_gradient_y',0.0)
+    
+            X, Y = np.meshgrid(np.arange(nx), np.arange(ny))
+            density = 1 + ax*X + ay*Y
+            density = density / density.sum()
+    
+        elif spatial_model == "map":
+    
+            density = self.det_params['cr_density_map']
+            density = density / density.sum()
+    
+        for _ in range(n_events):
+    
+            # ---- spatial sampling ----
+            if spatial_model == "uniform":
+    
+                x0 = np.random.randint(0, ny)
+                y0 = np.random.randint(0, nx)
+    
+            elif spatial_model in ["gradient", "map"]:
+    
+                idx = np.random.choice(nx*ny, p=density.ravel())
+                x0, y0 = np.unravel_index(idx, (ny, nx))
+    
+            elif spatial_model == "radial":
+    
+                cx = nx/2
+                cy = ny/2
+                sigma = self.det_params.get('cr_radial_sigma', nx/4)
+    
+                r = np.random.rayleigh(scale=sigma)
+                theta = np.random.uniform(0, 2*np.pi)
+    
+                x0 = int(cy + r*np.sin(theta))
+                y0 = int(cx + r*np.cos(theta))
+    
+                if not (0 <= x0 < ny and 0 <= y0 < nx):
+                    continue
+    
+            # ---- energy distribution ----
+            energy = np.random.pareto(2.0) * energy_scale * FWC
+    
+            # ---- track geometry ----
+            track_length = max(1, np.random.poisson(mean_track))
+            angle = np.random.uniform(0, 2*np.pi)
+    
+            charge = energy / track_length
+    
+            for l in range(track_length):
+    
+                x = int(x0 + l*np.sin(angle))
+                y = int(y0 + l*np.cos(angle))
+    
+                if 0 <= x < ny and 0 <= y < nx:
+                    data[x, y] += charge
+        return data
+        
     def make_ccd_image(self, light_array):
 
         # QE pixel to pixel variation | Source photoelectrons
@@ -634,6 +718,9 @@ class Imager(Analyzer):
 
         # Dark Current. Includes DCNU, DNFP and shot noise
         self.photoelec_array = self.source_photoelec + self.DC_array
+
+        if self.cosmic_rays:
+            self.photoelec_array = self.add_cosmic_rays(self.photoelec_array)
 
         # Addition of Quantization error, Bias and Noise floor
         self.charge = self.photoelec_array + self.QN_array \
@@ -775,14 +862,7 @@ class Imager(Analyzer):
         self.compute_coeff_arrays()
 
         self.digital = self.make_ccd_image(self.light_array)
-
-        if self.cosmic_rays:
-            for i in range(self.n_cosmic_ray_hits):
-                x = np.random.randint(0, self.n_y)
-                y = np.random.randint(0, self.n_x)
-                self.digital[x, y] = pow(2, self.det_params['bit_res'])
-
-
+                     
         self.wcs = self.create_wcs(self.n_x, self.n_y,
                                    self.ra, self.dec,
                                    self.pixel_scale, self.theta)

@@ -632,6 +632,7 @@ class Imager(Analyzer):
         
     def add_cosmic_rays(self, data):
 
+        print("Adding cosmic rays...")
         ny, nx = data.shape
         FWC = self.det_params['FWC']
     
@@ -643,7 +644,8 @@ class Imager(Analyzer):
     
         # ---- temporal distribution ----
         n_events = np.random.poisson(rate * ny * nx * self.exp_time)
-    
+
+        print("No of cosmic ray events : ", n_events)
         # precompute density map if needed
         if spatial_model == "gradient":
     

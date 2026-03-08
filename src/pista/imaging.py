@@ -759,8 +759,8 @@ class Imager(Analyzer):
 
         if self.cosmic_rays:
             for i in range(self.n_cosmic_ray_hits):
-                x = np.random.randint(0, self.n_x)
-                y = np.random.randint(0, self.n_y)
+                x = np.random.randint(0, self.n_y)
+                y = np.random.randint(0, self.n_x)
                 self.digital[x, y] = pow(2, self.det_params['bit_res'])
 
 

@@ -55,7 +55,6 @@ class Analyzer(object):
                                  detect_sources)
         elif photometry == 'PSF':
             print("Running PSF Photometry using Photutils")
-             data, wcs, df, fwhm, sigma, ZP, detect_source=True
             self.psf_photometry(data, wcs, df, fwhm, sigma, ZP,
                                 detect_source)
 

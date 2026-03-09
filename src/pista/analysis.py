@@ -163,7 +163,7 @@ class Analyzer(object):
       # create circular annulus object
 
       self.bags = CircularAnnulus(positions, r_in=3*fwhm,
-                                        r_out=5*fwhm)
+                                        r_out=10*fwhm)
       # count number of pixels within the annulus
       sky_median = ApertureStats(data, self.bags).median
 
@@ -264,15 +264,15 @@ class Analyzer(object):
         bkgstat = MMMBackground(sigma_clip=sigma_clip)
     
         localbkg_estimator = LocalBackground(
-            inner_radius=15,
-            outer_radius=35,
+            inner_radius=3*fwhm,
+            outer_radius=10*fwhm,
             bkg_estimator=bkgstat
         )
     
         # -------------------------------------------------
         # Source grouping
         # -------------------------------------------------
-        grouper = SourceGrouper(2 * fwhm)
+        grouper = SourceGrouper(3 * fwhm)
     
         # -------------------------------------------------
         # Fitter
@@ -306,7 +306,7 @@ class Analyzer(object):
             finder=finder,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
-            fit_shape=(11, 11),
+            fit_shape=(5, 5),
             aperture_radius=3 * fwhm,
             progress_bar=True
         )
@@ -331,14 +331,14 @@ class Analyzer(object):
         # -------------------------------------------------
         # Flux calculations
         # -------------------------------------------------
-        ap_pix = 11 * 11
+        ap_pix = 5 * 5
     
         phot_table['flux_fit'] = self.gain * phot_table['flux_fit'] * u.electron
         phot_table['flux_fit_err'] = self.gain * phot_table['flux_err'] * u.electron
     
         NE_2 = (
             phot_table['flux_fit'].value
-            + phot_table['flux_fit_err'].value**2
+            + phot_table['flux_fit_err'].value
             + (self.DC_array.mean()
                + self.det_params['RN']**2
                + (self.gain / 2)**2) * ap_pix

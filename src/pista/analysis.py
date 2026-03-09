@@ -331,14 +331,14 @@ class Analyzer(object):
         # -------------------------------------------------
         # Flux calculations
         # -------------------------------------------------
-        ap_pix = 7 * 7
+        ap_pix = 11 * 11
     
         phot_table['flux_fit'] = self.gain * phot_table['flux_fit'] * u.electron
         phot_table['flux_fit_err'] = self.gain * phot_table['flux_err'] * u.electron
     
         NE_2 = (
             phot_table['flux_fit'].value
-            + phot_table['flux_fit_err'].value
+            + phot_table['flux_fit_err'].value**2
             + (self.DC_array.mean()
                + self.det_params['RN']**2
                + (self.gain / 2)**2) * ap_pix

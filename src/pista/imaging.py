@@ -297,7 +297,7 @@ class Imager(Analyzer):
             if 'x' in self.df.keys() and 'y' in self.df.keys():
                 print("Converting xy to ra-dec")
                 self.df = self.xy_to_radec(self.df, self.n_x, self.n_y,
-                                           self.pixel_scale)
+                                           self.pixel_scale,self.theta)
             else:
                 raise Exception("'ra','dec','x',or 'y', \
                  columns not found in input dataframe ")
@@ -346,13 +346,16 @@ class Imager(Analyzer):
 
         return image
 
-    def xy_to_radec(self, df, n_x, n_y, pixel_scale):
+    def xy_to_radec(self, df, n_x, n_y, pixel_scale, theta=0):
 
         w = WCS(naxis=2)
         w.wcs.crpix = [n_x//2, n_y//2]
         w.wcs.cdelt = np.array([-pixel_scale/3600, pixel_scale/3600])
         w.wcs.crval = [10, 10]
         w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+
+        w.wcs.pc = np.array([[np.cos(theta), -np.sin(theta)],
+                             [np.sin(theta),  np.cos(theta)]])
 
         pos = np.array([df['x'], df['y']])
         coords = np.array(w.pixel_to_world_values(pos.T))

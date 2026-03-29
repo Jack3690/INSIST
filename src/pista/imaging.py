@@ -57,8 +57,8 @@ class Imager(Analyzer):
 
         # Flags
         self.shot_noise = True
-        self.charge_diffusion = True
-        self.ipc = True
+        self.charge_diffusion = False
+        self.ipc = False
         self.QE = True
         self.sky = True
         self.PRNU = True

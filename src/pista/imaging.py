@@ -618,7 +618,7 @@ class Imager(Analyzer):
 
         if len(x0)>=10000 or self.convolve:
 
-          image[x0, y0] += flux
+          image[y0, x0] += flux
           image = fftconvolve(image, patch, mode='same')
           
         else:

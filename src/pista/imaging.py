@@ -143,7 +143,7 @@ class Imager(Analyzer):
         self.n_y = n_y
         self.psf_oversamp = int(self.tel_params['psf_oversamp'])
         self.pixel_scale = self.tel_params['pixel_scale']
-        self.theta = self.tel_params['theta']*np.pi/180
+        self.theta = np.radians(self.tel_params['theta'])
 
         self.response_funcs = self.tel_params['response_funcs']
         self.coeffs = self.tel_params['coeffs']
@@ -296,8 +296,7 @@ class Imager(Analyzer):
         if 'ra' not in self.df or 'dec' not in self.df.keys():
             if 'x' in self.df.keys() and 'y' in self.df.keys():
                 print("Converting xy to ra-dec")
-                self.df = self.xy_to_radec(self.df, self.n_x, self.n_y,
-                                           self.pixel_scale,self.theta)
+                self.df = self.xy_to_radec()
             else:
                 raise Exception("'ra','dec','x',or 'y', \
                  columns not found in input dataframe ")
@@ -346,21 +345,27 @@ class Imager(Analyzer):
 
         return image
 
-    def xy_to_radec(self, df, n_x, n_y, pixel_scale, theta=0):
-
+    def xy_to_radec(self):
         w = WCS(naxis=2)
-        w.wcs.crpix = [n_x//2, n_y//2]
-        w.wcs.cdelt = np.array([-pixel_scale/3600, pixel_scale/3600])
+        w.wcs.crpix = [self.n_x/2 + 0.5, self.n_y/2 + 0.5]
+        w.wcs.cdelt = np.array([-self.pixel_scale/3600, self.pixel_scale/3600])
         w.wcs.crval = [10, 10]
         w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-
-        w.wcs.pc = np.array([[np.cos(theta), -np.sin(theta)],
-                             [np.sin(theta),  np.cos(theta)]])
-
-        pos = np.array([df['x'], df['y']])
-        coords = np.array(w.pixel_to_world_values(pos.T))
-        df['ra'] = np.flip(coords[:, 0])
-        df['dec'] = np.flip(coords[:, 1])
+        
+        c, s = np.cos(self.theta), np.sin(self.theta)
+        w.wcs.pc = np.array([[c, -s],
+                             [s,  c]])
+        
+        # Extract pixel coordinates
+        x = self.df['x'].values
+        y = self.df['y'].values
+        
+        # Convert to sky
+        ra, dec = w.pixel_to_world_values(x, y)
+        
+        # Assign
+        df['ra'] = ra
+        df['dec'] = dec
 
         return df
 
@@ -385,7 +390,7 @@ class Imager(Analyzer):
 
         """
         w = WCS(naxis=2)
-        w.wcs.crpix = [n_x//2, n_y//2]
+        w.wcs.crpix = [n_x/2 + 0.5, n_y/2 + 0.5]
         w.wcs.cdelt = np.array([-pixel_scale/3600, pixel_scale/3600])
         w.wcs.crval = [ra, dec]
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]

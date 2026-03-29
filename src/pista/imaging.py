@@ -357,8 +357,9 @@ class Imager(Analyzer):
                              [s,  c]])
         
         # Extract pixel coordinates
-        x = self.df['x'].values
-        y = self.df['y'].values
+        df = self.df
+        x = df['x'].values
+        y = df['y'].values
         
         # Convert to sky
         ra, dec = w.pixel_to_world_values(x, y)

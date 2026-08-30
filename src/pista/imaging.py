@@ -639,6 +639,7 @@ class Imager(Analyzer):
                                self.psf_oversamp)
 
         image = image.sum(axis=(1, 3))
+        image[image<0]=0
 
         return image
         

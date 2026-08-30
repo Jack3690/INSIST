@@ -16,7 +16,7 @@ import astropy.units as u
 from astropy.io.fits import CompImageHDU
 from astropy.modeling.fitting import LevMarLSQFitter
 from astropy.stats import SigmaClip, sigma_clipped_stats
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, match_coordinates_sky
 from astropy.table import Table, join_skycoord, join
 
 

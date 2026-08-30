@@ -241,7 +241,7 @@ class Analyzer(object):
         ZP : float
             Photometric zeropoint.
     
-        detect_source : bool
+        detect : bool
             If True, detect sources using DAOStarFinder.
             If False, use input catalog positions.
         """
@@ -250,6 +250,15 @@ class Analyzer(object):
         # Image statistics
         # -------------------------------------------------
         mean, median, std = sigma_clipped_stats(data, sigma=3)
+    
+        # -------------------------------------------------
+        # Fit region size, scaled to FWHM (DAOPHOT/ALLSTAR convention)
+        # -------------------------------------------------
+        n = int(np.ceil(3 * fwhm))
+        if n % 2 == 0:
+            n += 1
+        fit_shape = (n, n)
+        n_fit_pix = fit_shape[0] * fit_shape[1]
     
         # -------------------------------------------------
         # PSF model
@@ -264,8 +273,8 @@ class Analyzer(object):
         bkgstat = MMMBackground(sigma_clip=sigma_clip)
     
         localbkg_estimator = LocalBackground(
-            inner_radius=3*fwhm,
-            outer_radius=10*fwhm,
+            inner_radius=3 * fwhm,
+            outer_radius=10 * fwhm,
             bkg_estimator=bkgstat
         )
     
@@ -298,6 +307,12 @@ class Analyzer(object):
             self.psf_model.y_0.fixed = True
     
         # -------------------------------------------------
+        # Saturation mask — exclude saturated/bad pixels from the fit
+        # -------------------------------------------------
+        saturation_adu = pow(2, self.det_params['bit_res']) - 1
+        bad_mask = data >= saturation_adu
+    
+        # -------------------------------------------------
         # PSF photometry object
         # -------------------------------------------------
         photometry = PSFPhotometry(
@@ -306,7 +321,7 @@ class Analyzer(object):
             finder=finder,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
-            fit_shape=(5, 5),
+            fit_shape=fit_shape,
             aperture_radius=3 * fwhm,
             progress_bar=True
         )
@@ -314,13 +329,18 @@ class Analyzer(object):
         # -------------------------------------------------
         # Run photometry
         # -------------------------------------------------
-        phot_table = photometry(data, init_params=init_params)
+        phot_table = photometry(data, mask=bad_mask, init_params=init_params)
     
         # -------------------------------------------------
         # Remove failed fits
         # -------------------------------------------------
         if 'flags' in phot_table.colnames:
             phot_table = phot_table[phot_table['flags'] == 0]
+    
+        if len(phot_table) == 0:
+            print("No sources survived fitting/flag cuts.")
+            self.phot_table = phot_table
+            return phot_table
     
         # -------------------------------------------------
         # Convert to sky coordinates
@@ -329,22 +349,50 @@ class Analyzer(object):
         coords = np.array(wcs.pixel_to_world_values(positions))
     
         # -------------------------------------------------
-        # Flux calculations
+        # Flux calculations (convert to electrons)
         # -------------------------------------------------
-        ap_pix = 5 * 5
-    
         phot_table['flux_fit'] = self.gain * phot_table['flux_fit'] * u.electron
         phot_table['flux_fit_err'] = self.gain * phot_table['flux_err'] * u.electron
     
-        NE_2 = (
-            phot_table['flux_fit'].value
-            + phot_table['flux_fit_err'].value
-            + (self.DC_array.mean()
-               + self.det_params['RN']**2
-               + (self.gain / 2)**2) * ap_pix
+        # -------------------------------------------------
+        # Per-source noise budget (Stetson 1987 CCD-equation style, electrons)
+        # -------------------------------------------------
+        if 'local_bkg' in phot_table.colnames:
+            # local_bkg from PSFPhotometry is in the native image units (ADU);
+            # convert to electrons for consistency with the rest of the budget
+            sky_level_e = np.abs(phot_table['local_bkg']) * self.gain
+        else:
+            sky_level_e = np.full(len(phot_table), np.abs(median) * self.gain)
+    
+        quant_var = (self.gain / 2.0) ** 2  # digitization term, DAOPHOT convention
+    
+        variance = (
+            np.abs(phot_table['flux_fit'].value)      # source photon shot noise
+            + n_fit_pix * (
+                sky_level_e
+                + self.det_params['RN'] ** 2
+                + quant_var
+            )
         )
     
-        phot_table['flux_err'] = np.sqrt(NE_2) * u.electron
+        phot_table['flux_err'] = np.sqrt(variance) * u.electron
+    
+        # Keep the fit's own formal covariance error too — useful QA/blend flag,
+        # analogous in spirit to DAOPHOT's chi statistic
+        phot_table['flux_err_formal'] = phot_table['flux_fit_err']
+        with np.errstate(divide='ignore', invalid='ignore'):
+            phot_table['err_ratio'] = (
+                phot_table['flux_err'].value / phot_table['flux_err_formal'].value
+            )
+    
+        # -------------------------------------------------
+        # Drop non-physical (zero/negative) fluxes before taking logs
+        # -------------------------------------------------
+        valid_flux = phot_table['flux_fit'].value > 0
+        n_dropped = np.sum(~valid_flux)
+        if n_dropped > 0:
+            print(f"Dropping {n_dropped} source(s) with non-positive fitted flux")
+        phot_table = phot_table[valid_flux]
     
         # -------------------------------------------------
         # Signal-to-noise
@@ -355,11 +403,14 @@ class Analyzer(object):
         # Magnitudes
         # -------------------------------------------------
         phot_table['mag_out'] = -2.5 * np.log10(phot_table['flux_fit'].value) + ZP
-        phot_table['mag_err'] = 1.082 / phot_table['SNR'].value
+        phot_table['mag_err'] = (2.5 / np.log(10)) / phot_table['SNR'].value
     
         # -------------------------------------------------
-        # Add SkyCoord
+        # Add SkyCoord (recompute positions/coords after the flux cut above)
         # -------------------------------------------------
+        positions = np.vstack((phot_table['x_fit'], phot_table['y_fit'])).T
+        coords = np.array(wcs.pixel_to_world_values(positions))
+    
         phot_table['SkyCoord'] = SkyCoord(
             ra=coords[:, 0],
             dec=coords[:, 1],
@@ -367,25 +418,23 @@ class Analyzer(object):
         )
     
         # -------------------------------------------------
-        # Match with input catalog
+        # Match with input catalog (strict nearest-neighbor, 1:1)
         # -------------------------------------------------
-        tab2 = Table.from_pandas(df)
+        cat_coords = SkyCoord(ra=df['ra'].values, dec=df['dec'].values, unit='deg')
     
-        tab2['SkyCoord'] = SkyCoord(
-            ra=df['ra'],
-            dec=df['dec'],
-            unit='deg'
-        )
+        idx, sep2d, _ = match_coordinates_sky(phot_table['SkyCoord'], cat_coords)
     
-        min_dist = join_skycoord(2 * self.pixel_scale * u.arcsec)
+        max_sep = 2 * self.pixel_scale * u.arcsec
+        good = sep2d < max_sep
     
-        phot_table = join(
-            phot_table,
-            tab2['mag', 'x', 'y', 'SkyCoord'],
-            join_funcs={'SkyCoord': min_dist}
-        )
+        if np.sum(~good) > 0:
+            print(f"Dropping {np.sum(~good)} unmatched detection(s) "
+                  f"(no catalog match within {max_sep})")
     
-        phot_table.rename_column('mag', 'mag_in')
+        phot_table = phot_table[good]
+        phot_table['mag_in'] = df['mag'].values[idx[good]]
+        phot_table['x_in'] = df['x'].values[idx[good]]
+        phot_table['y_in'] = df['y'].values[idx[good]]
     
         # -------------------------------------------------
         # Apertures for plotting

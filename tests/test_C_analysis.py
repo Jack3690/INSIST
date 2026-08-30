@@ -47,7 +47,7 @@ def test_Analyzer(init_Imager):
     wcs = sim.wcs
     data = sim.digital
     ZP = sim.ZP
-    an(df=df, wcs=wcs, data=data, photometry='Aper', ZP=ZP)
+    an(df=df, wcs=wcs, data=data, photometry=None, ZP=ZP)
 
     assert hasattr(an, 'phot_table')
     assert len(an.phot_table) == 3
@@ -69,7 +69,7 @@ def test_plotting(init_Imager):
     wcs = sim.wcs
     data = sim.digital
     ZP = sim.ZP
-    an(df=df, wcs=wcs, data=data, photometry='Aper', ZP=ZP)
+    an(df=df, wcs=wcs, data=data, photometry=None, ZP=ZP)
     an.n_x = sim.n_x
     an.n_y = sim.n_y
 

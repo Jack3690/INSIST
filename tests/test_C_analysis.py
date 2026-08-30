@@ -37,6 +37,7 @@ def init_Imager():
 def test_Analyzer(init_Imager):
     sim = init_Imager
     an = Analyzer()
+    an.Cal0 = False
     an.det_params = sim.det_params
     an.gain = sim.gain
     an.DC_array = sim.DC_array
@@ -58,7 +59,7 @@ def test_Analyzer(init_Imager):
 def test_plotting(init_Imager):
     sim = init_Imager
     an = Analyzer()
-
+    an.Cal0 = False
     an.det_params = sim.det_params
     an.gain = sim.gain
     an.DC_array = sim.DC_array

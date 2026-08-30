@@ -504,10 +504,13 @@ class Imager(Analyzer):
         if self.QN:
             # electrons
             A = self.det_params['FWC']
-            B = pow(2, self.det_params['bit_res'])*np.sqrt(12)
-            self.QN_value = (A/B)
-            self.QN_array = self.QN_value*np.random.randint(-1, 2,
-                                                            size=(n_x, n_y))
+            n_levels = pow(2, self.det_params['bit_res'])
+        
+            delta = A / n_levels          # ADU step size, in electrons (LSB size)
+            self.QN_value = delta / np.sqrt(12)   # target RMS, for reference/logging
+        
+            # Uniform quantization error on [-delta/2, delta/2]
+            self.QN_array = np.random.uniform(-delta/2, delta/2, size=(n_x, n_y))
         else:
             self.QN_array = 0
             

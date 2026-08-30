@@ -58,164 +58,222 @@ class Analyzer(object):
             self.psf_photometry(data, wcs, df, fwhm, sigma, ZP,
                                 detect_sources)
 
-    def aper_photometry(self, data, wcs, df, fwhm, sigma, ZP,detect):
-      """
-      Function to perform Aperture photometry
-
-      Parameters
-      ----------
-
-      data: np.ndarray,
-            image to perform photometry on
-
-      wcs: astropy.wcs.WCS
-            WCS object of the image
-
-      df: pandas.DataFrame,
-          Source catalog of source in the image from simulation for
-          reference
-
-      fwhm : float, pixels
-                  During aperture photometry,
-                  fwhm corresponds to FWHM circular aperture for
-                  aperture photometry
-                  During PSF photometry,
-                  fwhm corresponds FWHM kernel to use for PSF photometry
-      sigma: float,
-              The numbers of standard deviations above which source has to be
-              detected
-      detect: bool,
-              If true, DARStarFinder is used to detect sources for aperture
-              photometry
-
-              if false, input catalog is used for getting positions
-              of sources for aperture photometry
-      ZP    : float,
-              zero point of the telescope.
-
-      Returns
-      -------
-
-      phot_table: astropy.table.Table
-                  table containing photometry of the souces
-
-                  Columns
-                    'x-centeroid'
-                    'y-centeroid'
-                    'sky'
-                    'flux'
-                    'mag_in'
-                    'mag_out'
-                    'mag_err'
-                    'SNR'
-
-      """
-
-      # if detect flag is set to True, detect sources in the image
-      if detect:
-          print("Running Source Detection")
-          mmm_bkg = MMMBackground()
-
-          sigma_clip = SigmaClip(sigma_lower=2.25, sigma_upper=2.00)
-
-          if self.Cal0:
+    def aper_photometry(self, data, wcs, df, fwhm, sigma, ZP, detect):
+        """
+        Function to perform Aperture photometry
+    
+        Parameters
+        ----------
+    
+        data: np.ndarray,
+              image to perform photometry on
+    
+        wcs: astropy.wcs.WCS
+              WCS object of the image
+    
+        df: pandas.DataFrame,
+            Source catalog of source in the image from simulation for
+            reference
+    
+        fwhm : float, pixels
+                    During aperture photometry,
+                    fwhm corresponds to FWHM circular aperture for
+                    aperture photometry
+                    During PSF photometry,
+                    fwhm corresponds FWHM kernel to use for PSF photometry
+        sigma: float,
+                The numbers of standard deviations above which source has to be
+                detected
+        detect: bool,
+                If true, DAOStarFinder is used to detect sources for aperture
+                photometry
+    
+                if false, input catalog is used for getting positions
+                of sources for aperture photometry
+        ZP    : float,
+                zero point of the telescope.
+    
+        Returns
+        -------
+    
+        phot_table: astropy.table.Table
+                    table containing photometry of the sources
+    
+                    Columns
+                      'x-centeroid'
+                      'y-centeroid'
+                      'sky'
+                      'flux'
+                      'mag_in'
+                      'mag_out'
+                      'mag_err'
+                      'SNR'
+    
+        """
+    
+        # -------------------------------------------------
+        # Bad pixel mask, used both for background estimation
+        # and for excluding bad pixels from photometric apertures
+        # -------------------------------------------------
+        if self.Cal0:
             print("Performing photometry on Level 1 data")
-            mask = np.where(np.isnan(data) | np.isinf(data) | \
-                                                (data<0),1, 0)
-          else:
+            bad_mask = np.isnan(data) | np.isinf(data) | (data < 0)
+        else:
             print("Performing photometry on Level 0 data")
-            mask = np.where(data<0,1,0)
-
-          try:
-            bkg = Background2D(data, (64, 64),
-                                  filter_size=(3, 3),
-                                  sigma_clip=sigma_clip,
-                                  bkg_estimator=mmm_bkg,
-                               #   coverage_mask=mask,
-                                  fill_value = 0.0)
-            data_bkgsub = data.copy() - bkg.background
-          except:
-            print("Background Estimation failed")
-            data_bkgsub = data
-
-
-          _, _, std = sigma_clipped_stats(data_bkgsub)
-
-          daofind = DAOStarFinder(threshold=sigma*std, fwhm=fwhm)
-
-          sources = daofind(data_bkgsub, mask=mask)
-          # Get the source positions
-          positions = np.transpose((sources['xcentroid'],
-                                    sources['ycentroid']))
-
-      else:
-
-          # create SkyCoord object from ra and dec values in the dataframe
-          coords = np.array([df['ra'],df['dec']])
-          # convert the sky coordinates to pixel coordinates
-          pix = wcs.world_to_pixel_values(coords.T)
-          positions = np.array(pix)
-
-      # create circular aperture object
-      self.aps = CircularAperture(positions, r=2*fwhm)
-      # count number of pixels within the aperture
-      ap_pix = self.aps.area
-      # create circular annulus object
-
-      self.bags = CircularAnnulus(positions, r_in=3*fwhm,
-                                        r_out=10*fwhm)
-      # count number of pixels within the annulus
-      sky_median = ApertureStats(data, self.bags).median
-
-      # perform aperture photometry on the data
-      phot_table = aperture_photometry(data, self.aps)
-
-      # calculate sky flux. electrons
-      phot_table['sky_flux'] = sky_median*ap_pix*self.gain*u.electron
-
-      # calculate source flux
-      phot_table['flux'] = (self.gain*phot_table['aperture_sum'].value - \
-                           phot_table['sky_flux'].value)*u.electron
-
-      # calculate error on the source flux
-      NE_2 =  phot_table['flux'].value + phot_table['sky_flux'].value + \
-              (self.DC_array.mean() + self.det_params['RN']**2 + \
-                            (self.gain/2)**2)*ap_pix
-
-      phot_table['flux_err'] = np.sqrt(NE_2)*u.electron
-
-      # calculate signal to noise ratio
-      phot_table['SNR'] = phot_table['flux']/phot_table['flux_err']
-
-      if not detect:
-
-          phot_table['ra'] = df['ra'].values
-          phot_table['dec'] = df['dec'].values
-          phot_table['mag_in'] = df['mag'].values
-
-      else:
-          coords = np.array(wcs.pixel_to_world_values(positions))
-
-          phot_table['SkyCoord'] = SkyCoord(ra = coords[:, 0],
-                                            dec = coords[:, 1],
-                                            unit = 'deg')
-          tab2 = Table.from_pandas(df)
-
-          tab2['SkyCoord'] = SkyCoord(ra = df['ra'],
-                                      dec = df['dec'],
-                                      unit = 'deg')
-
-          min_dist = join_skycoord(2*self.pixel_scale*u.arcsec)
-
-          phot_table = join(phot_table, tab2['mag', 'x', 'y', 'SkyCoord'],
-                           join_funcs={'SkyCoord': min_dist})
-
-          phot_table.rename_column('mag', 'mag_in')
-
-      phot_table['mag_out'] = -2.5*np.log10(phot_table['flux'].value) + ZP
-      phot_table['mag_err'] = 1.082/phot_table['SNR'].value
-
-      self.phot_table = phot_table
+            bad_mask = (data < 0) | np.isinf(data)
+    
+        saturation_adu = pow(2, self.det_params['bit_res']) - 1
+        bad_mask = bad_mask | (data >= saturation_adu)
+    
+        # if detect flag is set to True, detect sources in the image
+        if detect:
+            print("Running Source Detection")
+            mmm_bkg = MMMBackground()
+    
+            sigma_clip = SigmaClip(sigma_lower=2.25, sigma_upper=2.00)
+    
+            try:
+                bkg = Background2D(data, (64, 64),
+                                    filter_size=(3, 3),
+                                    sigma_clip=sigma_clip,
+                                    bkg_estimator=mmm_bkg,
+                                    coverage_mask=bad_mask,
+                                    fill_value=0.0)
+                data_bkgsub = data.copy() - bkg.background
+            except ValueError as e:
+                print(f"Background estimation failed ({e}); "
+                      "falling back to unsubtracted data")
+                data_bkgsub = data.copy()
+    
+            _, _, std = sigma_clipped_stats(data_bkgsub, mask=bad_mask)
+    
+            daofind = DAOStarFinder(threshold=sigma * std, fwhm=fwhm)
+    
+            sources = daofind(data_bkgsub, mask=bad_mask)
+    
+            if sources is None or len(sources) == 0:
+                print("No sources detected.")
+                self.phot_table = Table()
+                return self.phot_table
+    
+            # Get the source positions
+            positions = np.transpose((sources['xcentroid'],
+                                      sources['ycentroid']))
+    
+        else:
+            # create SkyCoord object from ra and dec values in the dataframe
+            coords = np.array([df['ra'], df['dec']])
+            # convert the sky coordinates to pixel coordinates
+            pix = wcs.world_to_pixel_values(coords.T)
+            positions = np.array(pix)
+    
+        # create circular aperture object
+        self.aps = CircularAperture(positions, r=2 * fwhm)
+        # count number of pixels within the aperture
+        ap_pix = self.aps.area
+        # create circular annulus object
+        self.bags = CircularAnnulus(positions, r_in=3 * fwhm, r_out=10 * fwhm)
+    
+        # sky level and its own uncertainty from the annulus
+        ann_stats = ApertureStats(data, self.bags, sigma_clip=SigmaClip(sigma=3),
+                                  mask=bad_mask)
+        sky_median = ann_stats.median
+        sky_std = ann_stats.std
+        n_sky_pix = ann_stats.sum_aper_area.value  # pixels actually used per annulus
+    
+        # perform aperture photometry on the data, excluding bad pixels
+        phot_table = aperture_photometry(data, self.aps, mask=bad_mask)
+    
+        # calculate sky flux, electrons
+        phot_table['sky_flux'] = sky_median * ap_pix * self.gain * u.electron
+    
+        # calculate source flux
+        phot_table['flux'] = (self.gain * phot_table['aperture_sum'].value -
+                             phot_table['sky_flux'].value) * u.electron
+    
+        # -------------------------------------------------
+        # Error budget (Merline & Howell 1995 CCD equation), electrons
+        # -------------------------------------------------
+        # Empirical per-pixel quantization variance from the simulator's own
+        # QN_array, rather than an assumed textbook constant
+        quant_var_per_pix = np.mean(self.QN_array ** 2) if self.QN else 0.0
+    
+        # Local dark current per pixel: use the annulus positions rather than
+        # the frame-wide mean, since dark current can vary spatially (DCNU)
+        dc_local = np.array([
+            self.DC_array[
+                max(int(y) - int(3 * fwhm), 0):int(y) + int(3 * fwhm),
+                max(int(x) - int(3 * fwhm), 0):int(x) + int(3 * fwhm)
+            ].mean()
+            for x, y in positions
+        ])
+    
+        # (1 + n_pix/n_sky) factor accounts for sky level itself being a noisy
+        # estimate from a finite annulus (Newberry 1991)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            sky_area_factor = 1.0 + (ap_pix / n_sky_pix)
+    
+        NE_2 = (
+            np.abs(phot_table['flux'].value)
+            + ap_pix * sky_area_factor * (
+                (sky_median * self.gain)
+                + sky_std ** 2 * self.gain ** 2
+                + dc_local
+                + self.det_params['RN'] ** 2
+                + quant_var_per_pix
+            )
+        )
+    
+        phot_table['flux_err'] = np.sqrt(NE_2) * u.electron
+    
+        # -------------------------------------------------
+        # Drop non-physical (zero/negative) fluxes before taking logs
+        # -------------------------------------------------
+        valid_flux = phot_table['flux'].value > 0
+        n_dropped = np.sum(~valid_flux)
+        if n_dropped > 0:
+            print(f"Dropping {n_dropped} source(s) with non-positive flux")
+        phot_table = phot_table[valid_flux]
+        positions = positions[valid_flux]
+    
+        # calculate signal to noise ratio
+        phot_table['SNR'] = phot_table['flux'] / phot_table['flux_err']
+    
+        if not detect:
+            phot_table['ra'] = df['ra'].values[valid_flux]
+            phot_table['dec'] = df['dec'].values[valid_flux]
+            phot_table['mag_in'] = df['mag'].values[valid_flux]
+    
+        else:
+            coords = np.array(wcs.pixel_to_world_values(positions))
+    
+            phot_table['SkyCoord'] = SkyCoord(ra=coords[:, 0],
+                                              dec=coords[:, 1],
+                                              unit='deg')
+    
+            cat_coords = SkyCoord(ra=df['ra'].values, dec=df['dec'].values,
+                                  unit='deg')
+    
+            idx, sep2d, _ = match_coordinates_sky(phot_table['SkyCoord'],
+                                                  cat_coords)
+    
+            max_sep = 2 * self.pixel_scale * u.arcsec
+            good = sep2d < max_sep
+    
+            if np.sum(~good) > 0:
+                print(f"Dropping {np.sum(~good)} unmatched detection(s) "
+                      f"(no catalog match within {max_sep})")
+    
+            phot_table = phot_table[good]
+            phot_table['mag_in'] = df['mag'].values[idx[good]]
+            phot_table['x_in'] = df['x'].values[idx[good]]
+            phot_table['y_in'] = df['y'].values[idx[good]]
+    
+        phot_table['mag_out'] = -2.5 * np.log10(phot_table['flux'].value) + ZP
+        phot_table['mag_err'] = (2.5 / np.log(10)) / phot_table['SNR'].value
+    
+        self.phot_table = phot_table
+        return self.phot_table
 
     def psf_photometry(self, data, wcs, df, fwhm, sigma, ZP, detect=True):
         """
@@ -364,7 +422,10 @@ class Analyzer(object):
         else:
             sky_level_e = np.full(len(phot_table), np.abs(median) * self.gain)
     
-        quant_var = (self.gain / 2.0) ** 2  # digitization term, DAOPHOT convention
+        # Empirical per-pixel quantization variance from the simulator's own
+        # QN_array, rather than an assumed textbook constant — kept consistent
+        # with the same term in aper_photometry
+        quant_var = np.mean(self.QN_array ** 2) if self.QN else 0.0
     
         variance = (
             np.abs(phot_table['flux_fit'].value)      # source photon shot noise
